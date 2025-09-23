@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import LocalPostsView, PostListCreateView, like_post
+from views import LocalPostsView, PostListCreateView, like_post
 
 urlpatterns = [
     path("", PostListCreateView.as_view(), name="post-list-create"),

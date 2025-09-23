@@ -1,11 +1,12 @@
 # backend/glade/celery.py
 import os
-
 from celery import Celery
-from django.conf import settings
 
-# Set Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "glade.settings.development")
+# Set Django settings module (defaults to development if not provided)
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE",
+    os.getenv("DJANGO_SETTINGS_MODULE", "glade.settings.development")
+)
 
 app = Celery("glade")
 

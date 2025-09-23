@@ -1,6 +1,6 @@
 # backend/federation/activitypub.py
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
@@ -24,13 +24,13 @@ class ActivityPubService:
 
             headers = {
                 "Content-Type": "application/activity+json",
-                "Date": datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT"),
+                "Date": datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT"),
                 "Host": urlparse(inbox_url).netloc,
                 "User-Agent": f"Glade/{settings.INSTANCE_DOMAIN}",
             }
 
             # Sign the request
-            signature = sign_request(
+            signature = crypto_service.sign_request(
                 method="POST",
                 path=urlparse(inbox_url).path,
                 headers=headers,
@@ -76,6 +76,6 @@ class ActivityPubService:
             "type": activity_type,
             "id": f"https://{settings.INSTANCE_DOMAIN}/activities/{object_data.get('id', '')}",
             "actor": f"https://{settings.INSTANCE_DOMAIN}/users/{actor.username}",
-            "published": datetime.utcnow().isoformat() + "Z",
+            "published": datetime.now(UTC).isoformat() + "Z",
             "object": object_data,
         }

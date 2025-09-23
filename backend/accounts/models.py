@@ -7,7 +7,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import Point
 
 
 class User(AbstractUser):

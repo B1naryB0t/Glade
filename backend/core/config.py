@@ -1,6 +1,6 @@
 # backend/core/config.py
 import secrets
-from typing import List, Optional
+from typing import List
 
 from pydantic_settings import BaseSettings
 

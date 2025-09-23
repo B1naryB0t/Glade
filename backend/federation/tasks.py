@@ -83,6 +83,6 @@ def get_federation_targets(author: User, post: Post) -> list:
 
 def get_nearby_instance_inboxes(post: Post) -> list:
     """Get inboxes of Glade instances with users near the post location"""
-    # This would implement geo-spatial queries to find nearby instances
+    # This would implement geospatial queries to find nearby instances
     # For now, return empty list
     return []

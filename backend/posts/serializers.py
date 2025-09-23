@@ -2,9 +2,8 @@ from accounts.serializers import UserSerializer
 from django.contrib.gis.geos import Point
 from privacy.services import PrivacyService
 from rest_framework import serializers
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from .models import Like, Post
+from models import Post
 
 
 class PostCreateSerializer(serializers.ModelSerializer):
