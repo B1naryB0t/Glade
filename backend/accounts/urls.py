@@ -6,5 +6,7 @@ urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", login_view, name="login"),
     path("profile/<str:username>/", UserProfileView.as_view(), name="user-profile"),
+    path("auth/", include("accounts.urls")),
+    path("posts/", include("posts.urls")),
     path("follow/<str:username>/", follow_user, name="follow-user"),
 ]
