@@ -1,13 +1,13 @@
+# backend/posts/views.py
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from django.db.models import Q
 from federation.tasks import federate_post
+from models import Like, Post
 from privacy.services import PrivacyService
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
-from models import Like, Post
 from serializers import PostCreateSerializer, PostSerializer
 
 

@@ -1,3 +1,4 @@
+# backend/federation/views.py
 import json
 
 from accounts.models import User

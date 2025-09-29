@@ -1,5 +1,5 @@
+# backend/posts/urls.py
 from django.urls import path
-
 from views import LocalPostsView, PostListCreateView, like_post
 
 urlpatterns = [

@@ -1,5 +1,5 @@
+# backend/accounts/urls.py
 from django.urls import path
-
 from views import RegisterView, UserProfileView, follow_user, login_view
 
 urlpatterns = [
