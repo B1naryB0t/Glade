@@ -71,6 +71,26 @@
 5. ActivityPub events trigger federation activities
 6. External federation updates received via inbox
 
+```mermaid
+sequenceDiagram
+participant U as User
+participant R as React
+participant N as Nginx
+participant D as Django
+participant DB as PostgreSQL
+participant F as Federation
+participant EX as External Server
+
+Note over U,EX: User Creates Post
+U->>R: Create post
+R->>N: POST /api/posts
+N->>D: Route to Django
+D->>DB: Save post
+D->>F: Trigger federation
+D->>R: Return success
+F->>DB: Get post data
+F->>EX: Deliver to followers
+```
 
 ---
 
