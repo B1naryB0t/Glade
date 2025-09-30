@@ -106,6 +106,20 @@ Create a social media platform that:
 
 ## 6. Database Design
 
+### 6.1 Core Entities
+??? Needs significant clarification
+
+### 6.2 Indexing Strategy
+- **Primary Keys**: UUID with B-tree indexes
+- **Location Queries**: GiST index on location coordinates
+- **Timeline Queries**: Composite index on (user_id, created_at)
+- **Federation**: Index on actor_url and inbox_url
+
+### 6.3 Data Retention
+- **User Data**: Retained until account deletion
+- **Posts**: Retained until post deletion
+- **Logs**: 30-day retention for debugging
+- **Federation Data**: Cache external content for 7 days
 
 ---
 
@@ -135,6 +149,17 @@ Create a social media platform that:
 ---
 
 ## 13. Risk Assessment
+
+### 13.1 Technical Risks
+- **ActivityPub Complexity**: Mitigation - Start with basic implementation
+- **Performance Issues**: Mitigation - Load testing and optimization
+- **Security Vulnerabilities**: Mitigation - Security reviews and testing
+- **Third-party Dependencies**: Mitigation - Vendor lock-in assessment
+
+### 13.2 Project Risks
+- **Timeline Pressure**: Mitigation - Agile scope adjustment
+- **Team Availability**: Mitigation - Cross-training and documentation
+- **Requirement Changes**: Mitigation - Change control process
 
 ---
 
