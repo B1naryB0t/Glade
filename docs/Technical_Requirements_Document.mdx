@@ -1,0 +1,258 @@
+# Technical Requirements Document (TRD)
+## Location-Based Privacy-Respecting Social Media Platform
+
+**Document Version**: 0.1  
+**Date**: September 28, 2025  
+**Project**: Privacy Social Media MVP - Technical Requirements  
+**Team Size**: 5 developers  
+**Timeline**: 8 weeks
+
+---
+
+## 1. Non-Functional Requirements
+
+### 1.1 Performance Requirements (initial values are assumed to be perceived as responsive)
+- **NFR-001**: Page load time < 2 seconds on 3G connection (Regular 3G (↓ 750Kbps ↑ 250Kbps latency: 100ms))
+- **NFR-002**: Support 100 concurrent users (MVP scale)
+- **NFR-003**: Database query response time < 500ms
+- **NFR-004**: API response time < 1 second for 95% of requests
+
+### 1.2 Usability Requirements
+- **NFR-005**: Responsive design (mobile, tablet, desktop)
+- **NFR-006**: Intuitive navigation with max 3 clicks to any feature
+
+### 1.3 Reliability Requirements
+- **NFR-007**: 99% uptime during business hours
+- **NFR-008**: Graceful degradation when external services fail
+- **NFR-009**: Data backup every 24 hours
+
+### 1.4 Security Requirements
+- **NFR-010**: JWT token expiration (15 minutes access, 7 days refresh)
+- **NFR-011**: Rate limiting (100 requests/minute per user)
+- **NFR-012**: Input validation and sanitization
+
+### 1.5 Maintainability Requirements
+- **NFR-013**: Code coverage > 80% for critical paths (tester decides values here)
+- **NFR-014**: Automated testing pipeline
+- **NFR-015**: API documentation
+- **NFR-016**: Basic logging and monitoring
+
+---
+
+## 2. System Architecture
+
+### 2.1 Architecture Pattern
+**Microservices-Ready Monolith**: Start with a modular monolith that can be split into microservices as needed.
+
+### 2.2 High-Level Components
+```mermaid
+graph LR
+    A[Frontend<br/>React SPA] <--> B[Nginx<br/>Reverse Proxy]
+    B <--> C[Backend API<br/>Django + DRF]
+    C <--> D[Database<br/>PostgreSQL]
+    C --> E[ActivityPub<br/>Federation]
+```
+
+### 2.3 API Design
+- **REST API**: Primary interface for frontend communication
+- **ActivityPub API**: Federation endpoints following W3C specification
+
+### 2.4 Data Flow
+1. User interacts with React frontend
+2. Frontend makes authenticated API calls to Nginx
+3. Nginx routes requests to Django backend
+4. Django processes requests and updates PostgreSQL database
+5. ActivityPub events trigger federation activities
+6. External federation updates received via inbox
+
+```mermaid
+sequenceDiagram
+participant U as User
+participant R as React
+participant N as Nginx
+participant D as Django
+participant DB as PostgreSQL
+participant F as Federation
+participant EX as External Server
+
+Note over U,EX: User Creates Post
+U->>R: Create post
+R->>N: POST /api/posts
+N->>D: Route to Django
+D->>DB: Save post
+D->>F: Trigger federation
+D->>R: Return success
+F->>DB: Get post data
+F->>EX: Deliver to followers
+```
+
+---
+
+## 3. Technology Stack
+
+### 3.1 Frontend Stack
+- **Framework**: React 18.2+ with TypeScript
+- **Build Tool**: ??? (Vite)
+- **State Management**:
+  - React Query (server state)
+- **Routing**: React Router v6
+- **Styling**: Tailwind CSS 3.0+
+- **Maps**: ???
+- **HTTP Client**: Axios
+- **Testing**: ???
+
+### 3.2 Backend Stack
+- **Framework**: Django 5.2+ with Django REST Framework
+- **Language**: Python 3.11+
+- **ORM**: Django ORM
+- **Migration**: Django migrations
+- **Validation**: DRF serializers
+- **Authentication**: Django REST Framework JWT
+- **Testing**: ???
+- **WSGI (Web Server Gateway Interface)**: ??? (Gunicorn, uWSGI, Waitress)
+- **Reverse Proxy**: Nginx
+
+### 3.3 Database Stack
+- **Primary Database**: PostgreSQL 15+
+- **Extensions**: PostGIS (for location data)
+- **Connection Pooling**: Django database connection pooling
+- **Caching**: ??? (Redis)
+
+### 3.4 Infrastructure Stack
+- **Cloud Provider**: AWS
+- **Compute**: EC2 t3.micro (MVP)
+- **Database**: PostgreSQL
+- **Storage**: S3 (future media uploads)
+- **Monitoring**: ???
+- **CI/CD**: GitHub Actions
+
+### 3.5 ActivityPub Stack (needs clarification)
+- **Protocol**: ActivityPub (W3C Recommendation)
+- **Content Type**: JSON-LD with Activity Streams 2.0
+- **Signatures**: HTTP Signatures (draft-cavage-http-signatures)
+- **Discovery**: WebFinger protocol
+- **Python Library**: django-activitypub or custom implementation
+
+---
+
+## 4. Database Design
+
+### 4.1 Core Entities
+??? Needs significant clarification
+
+### 4.2 Indexing Strategy
+- **Primary Keys**: UUID with B-tree indexes
+- **Location Queries**: GiST index on location coordinates
+- **Timeline Queries**: Composite index on (user_id, created_at)
+- **Federation**: Index on actor_url and inbox_url
+
+### 4.3 Data Retention
+- **User Data**: Retained until account deletion
+- **Posts**: Retained until post deletion
+- **Logs**: 30-day retention for debugging
+- **Federation Data**: Cache external content for 7 days
+
+---
+
+## 5. Security Requirements
+
+### 5.1 Authentication & Authorization
+- **Password Policy**: Minimum 8 characters, complexity requirements
+- **JWT Tokens**: 
+  - Access tokens: 15-minute expiration
+  - Refresh tokens: 7-day expiration, rotation on use
+- **Session Management**: Secure cookie settings
+
+### 5.2 Data Protection
+- **Encryption at Rest**: Database encryption (AWS RDS)
+- **Encryption in Transit**: ???
+- **PII Handling**: Hash sensitive data
+
+### 5.3 Input Validation
+- **SQL Injection**: Parameterized queries via Django ORM
+- **XSS Prevention**: Content sanitization, CSP headers
+- **Rate Limiting**: 
+  - Authentication: 5 attempts per 15 minutes
+  - API calls: 100 requests per minute per user
+  - Federation: 1000 requests per hour per server
+
+### 5.4 Privacy Controls
+- **Location Privacy**: Opt-in location sharing, coarse-grained data
+- **Content Privacy**: User-controlled visibility settings
+- **Federation Privacy**: Option to limit federation participation
+
+
+---
+
+## 6. ActivityPub Integration (needs clarification)
+
+### 6.1 Actor Implementation
+- **Actor Type**: Person (for users)
+- **Required Properties**: id, type, preferredUsername, inbox, outbox
+- **Optional Properties**: name, summary, icon, publicKey
+
+### 6.2 Activity Types (MVP)
+- **Create**: New post creation
+- **Follow**: Follow requests
+- **Accept**: Follow request acceptance
+- **Undo**: Unfollow, unlike actions
+
+### 6.3 Federation Endpoints
+```
+GET  /.well-known/webfinger     # WebFinger discovery
+GET  /users/{username}          # Actor object
+GET  /users/{username}/inbox    # Actor inbox (authenticated)
+POST /users/{username}/inbox    # Receive activities
+GET  /users/{username}/outbox   # Actor outbox (public)
+POST /users/{username}/outbox   # Send activities (authenticated)
+```
+
+### 6.4 HTTP Signatures (needs clarification)
+- **Algorithm**: rsa-sha256
+- **Headers**: (request-target) host date digest
+- **Key Management**: RSA 2048-bit keys per actor
+
+---
+
+## 7. Infrastructure and Deployment
+
+### 7.1 AWS Architecture
+```mermaid
+graph TD
+    A[Internet Gateway] --> B[Application Load Balancer]
+    B --> C[EC2 Instance<br/>Nginx + Django]
+    C <--> D[RDS Instance<br/>PostgreSQL]
+```
+
+### 7.2 Environment Configuration
+- **Development**: Local Docker containers
+- **Staging**: Single EC2 instance with RDS
+- **Production**: Auto-scaling group (future)
+
+### 7.3 Deployment Strategy
+- **CI/CD**: GitHub Actions
+- **Database Migrations**: ???
+- **Health Checks**: Application and database monitoring
+
+### 7.4 Monitoring and Logging (very basic initial implementation)
+- **Application Logs**: Structured JSON logging
+- **Metrics**: Response times, error rates, user activity
+- **Alerts**: Error rate > 5%, response time > 2s
+
+---
+
+## 8. Success Criteria
+
+### 8.1 Technical Success
+- [ ] All automated tests pass
+- [ ] Performance requirements met
+- [ ] Security requirements implemented
+- [ ] Application deployed and accessible
+- [ ] Documentation complete and accurate
+
+---
+
+**Document Control**
+- **Next Review**: Weekly during development
+- **Approval**: Development team lead
+- **Distribution**: Public
