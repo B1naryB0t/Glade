@@ -45,18 +45,12 @@
 **Microservices-Ready Monolith**: Start with a modular monolith that can be split into microservices as needed.
 
 ### 2.2 High-Level Components
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Nginx         │    │   Backend API   │    │   Database      │
-│   (React SPA)   │◄──►│   (Reverse      │◄──►│   (Django +     │◄──►│   (PostgreSQL)  │
-│                 │    │    Proxy)       │    │    DRF)         │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                      │
-                                                      ▼
-                                               ┌─────────────────┐
-                                               │  ActivityPub    │
-                                               │  Federation     │
-                                               └─────────────────┘
+```mermaid
+graph LR
+    A[Frontend<br/>React SPA] <--> B[Nginx<br/>Reverse Proxy]
+    B <--> C[Backend API<br/>Django + DRF]
+    C <--> D[Database<br/>PostgreSQL]
+    C --> E[ActivityPub<br/>Federation]
 ```
 
 ### 2.3 API Design
