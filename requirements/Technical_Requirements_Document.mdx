@@ -59,6 +59,49 @@ Create a social media platform that:
 
 ## 5. Technology Stack
 
+### 5.1 Frontend Stack
+- **Framework**: React 18.2+ with TypeScript
+- **Build Tool**: ??? (Vite)
+- **State Management**:
+  - React Query (server state)
+- **Routing**: React Router v6
+- **Styling**: Tailwind CSS 3.0+
+- **Maps**: ???
+- **HTTP Client**: Axios
+- **Testing**: ???
+
+### 5.2 Backend Stack
+- **Framework**: Django 5.2+ with Django REST Framework
+- **Language**: Python 3.11+
+- **ORM**: Django ORM
+- **Migration**: Django migrations
+- **Validation**: DRF serializers
+- **Authentication**: Django REST Framework JWT
+- **Testing**: ???
+- **WSGI (Web Server Gateway Interface)**: ??? (Gunicorn, uWSGI, Waitress)
+- **Reverse Proxy**: Nginx
+
+### 5.3 Database Stack
+- **Primary Database**: PostgreSQL 15+
+- **Extensions**: PostGIS (for location data)
+- **Connection Pooling**: Django database connection pooling
+- **Caching**: ??? (Redis)
+
+### 5.4 Infrastructure Stack
+- **Cloud Provider**: AWS
+- **Compute**: EC2 t3.micro (MVP)
+- **Database**: PostgreSQL
+- **Storage**: S3 (future media uploads)
+- **Monitoring**: ???
+- **CI/CD**: GitHub Actions
+
+### 5.5 ActivityPub Stack (needs clarification)
+- **Protocol**: ActivityPub (W3C Recommendation)
+- **Content Type**: JSON-LD with Activity Streams 2.0
+- **Signatures**: HTTP Signatures (draft-cavage-http-signatures)
+- **Discovery**: WebFinger protocol
+- **Python Library**: django-activitypub or custom implementation
+
 ---
 
 ## 6. Database Design
