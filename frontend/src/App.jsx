@@ -5,32 +5,109 @@ import { useAuth } from "./hooks/useAuth";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
+import SettingsPage from "./pages/SettingsPage";
+import Loading from "./components/common/Loading";
+import "./index.css";
+
+// Protected Route wrapper component
+function ProtectedRoute({ children }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Public Route wrapper (redirects to home if already logged in)
+function PublicRoute({ children }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function App() {
-	const { user, isLoading } = useAuth();
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        {/* Public routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
 
-	if (isLoading) {
-		return (
-			<div className="min-h-screen flex items-center justify-center">
-				Loading...
-			</div>
-		);
-	}
+        {/* Protected routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <HomePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <SettingsPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
 
-	return (
-		<div className="min-h-screen bg-gray-50">
-			<Routes>
-				<Route
-					path="/login"
-					element={!user ? <LoginPage /> : <Navigate to="/" />}
-				/>
-				<Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
-					<Route index element={<HomePage />} />
-				</Route>
-				<Route path="*" element={<Navigate to="/" />} />
-			</Routes>
-		</div>
-	);
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
 }
 
 export default App;
