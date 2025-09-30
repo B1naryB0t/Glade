@@ -217,16 +217,11 @@ POST /users/{username}/outbox   # Send activities (authenticated)
 ## 7. Infrastructure and Deployment
 
 ### 7.1 AWS Architecture
-```
-Internet Gateway
-    │
-Application Load Balancer
-    │
-┌─────────────────┐    ┌─────────────────┐
-│   EC2 Instance  │    │   RDS Instance  │
-│   (Nginx +      │◄──►│   (PostgreSQL)  │
-│    Django)      │    │                 │
-└─────────────────┘    └─────────────────┘
+```mermaid
+graph TD
+    A[Internet Gateway] --> B[Application Load Balancer]
+    B --> C[EC2 Instance<br/>Nginx + Django]
+    C <--> D[RDS Instance<br/>PostgreSQL]
 ```
 
 ### 7.2 Environment Configuration
