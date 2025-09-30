@@ -235,6 +235,20 @@ Application Load Balancer
 └─────────────────┘    └─────────────────┘
 ```
 
+### 7.2 Environment Configuration
+- **Development**: Local Docker containers
+- **Staging**: Single EC2 instance with RDS
+- **Production**: Auto-scaling group (future)
+
+### 7.3 Deployment Strategy
+- **CI/CD**: GitHub Actions
+- **Database Migrations**: ???
+- **Health Checks**: Application and database monitoring
+
+### 7.4 Monitoring and Logging (very basic initial implementation)
+- **Application Logs**: Structured JSON logging
+- **Metrics**: Response times, error rates, user activity
+- **Alerts**: Error rate > 5%, response time > 2s
 
 ---
 
