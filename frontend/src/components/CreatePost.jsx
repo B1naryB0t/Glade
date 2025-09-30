@@ -1,66 +1,114 @@
 // frontend/src/components/CreatePost.jsx
-import React, { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { MapPin, Globe, Users, Lock, AlertTriangle } from 'lucide-react'
-import { postService } from '../services/postService'
-import { useLocation } from '../hooks/useLocation'
+import React, { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { MapPin, Globe, Users, Lock, AlertTriangle, Image } from "lucide-react";
+import { postService } from "../services/postService";
+import { useLocation } from "../hooks/useLocation";
+import { useFileUpload } from "../hooks/useFileUpload";
+import { useErrorHandler } from "../hooks/useErrorHandler";
+import FileUpload from "./FileUpload";
+import ErrorAlert from "./ErrorAlert";
 
 const VISIBILITY_OPTIONS = [
-	{ value: 1, label: 'Public', icon: Globe, description: 'Visible to everyone, including other instances' },
-	{ value: 2, label: 'Local', icon: MapPin, description: 'Visible to nearby users and local instance' },
-	{ value: 3, label: 'Followers', icon: Users, description: 'Visible to your followers only' },
-	{ value: 4, label: 'Private', icon: Lock, description: 'Only visible to you' },
-]
+	{
+		value: 1,
+		label: "Public",
+		icon: Globe,
+		description: "Visible to everyone",
+	},
+	{
+		value: 2,
+		label: "Local",
+		icon: MapPin,
+		description: "Visible to nearby users",
+	},
+	{ value: 3, label: "Followers", icon: Users, description: "Followers only" },
+	{ value: 4, label: "Private", icon: Lock, description: "Only you" },
+];
+
+const MAX_POST_LENGTH = 5000;
 
 function CreatePost() {
-	const [content, setContent] = useState('')
-	const [contentWarning, setContentWarning] = useState('')
-	const [visibility, setVisibility] = useState(2)
-	const [localOnly, setLocalOnly] = useState(false)
-	const [includeLocation, setIncludeLocation] = useState(false)
+	const [content, setContent] = useState("");
+	const [contentWarning, setContentWarning] = useState("");
+	const [showContentWarning, setShowContentWarning] = useState(false);
+	const [visibility, setVisibility] = useState(2);
+	const [localOnly, setLocalOnly] = useState(false);
+	const [includeLocation, setIncludeLocation] = useState(false);
+	const [showImageUpload, setShowImageUpload] = useState(false);
 
-	const { location, hasLocation } = useLocation()
-	const queryClient = useQueryClient()
+	const { location, hasLocation } = useLocation();
+	const queryClient = useQueryClient();
+	const { error, handleError, clearError } = useErrorHandler();
+	const {
+		file: imageFile,
+		preview: imagePreview,
+		selectFile,
+		clearFile,
+	} = useFileUpload();
 
 	const createPostMutation = useMutation({
 		mutationFn: postService.createPost,
 		onSuccess: () => {
-			setContent('')
-			setContentWarning('')
-			queryClient.invalidateQueries(['posts'])
-		}
-	})
+			setContent("");
+			setContentWarning("");
+			setShowContentWarning(false);
+			clearFile();
+			setShowImageUpload(false);
+			queryClient.invalidateQueries(["posts"]);
+		},
+		onError: handleError,
+	});
 
-	const handleSubmit = (e) => {
-		e.preventDefault()
-		if (!content.trim()) return
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+
+		if (!content.trim()) {
+			handleError(new Error("Post content is required"));
+			return;
+		}
+
+		if (content.length > MAX_POST_LENGTH) {
+			handleError(
+				new Error(`Post must be less than ${MAX_POST_LENGTH} characters`),
+			);
+			return;
+		}
 
 		const postData = {
 			content: content.trim(),
 			visibility,
 			local_only: localOnly,
-			...(contentWarning && { content_warning: contentWarning }),
-			...(includeLocation && hasLocation && {
+			...(showContentWarning &&
+				contentWarning && { content_warning: contentWarning }),
+			...(includeLocation &&
+				hasLocation && {
 				location: {
 					latitude: location.latitude,
-					longitude: location.longitude
-				}
-			})
-		}
+					longitude: location.longitude,
+				},
+			}),
+		};
 
-		createPostMutation.mutate(postData)
-	}
+		createPostMutation.mutate(postData);
+	};
 
-	const selectedVisibility = VISIBILITY_OPTIONS.find(opt => opt.value === visibility)
+	const selectedVisibility = VISIBILITY_OPTIONS.find(
+		(opt) => opt.value === visibility,
+	);
+	const remainingChars = MAX_POST_LENGTH - content.length;
+	const isOverLimit = remainingChars < 0;
 
 	return (
 		<div className="bg-white rounded-lg shadow-sm border p-6">
+			<ErrorAlert error={error} onClose={clearError} />
+
 			<form onSubmit={handleSubmit} className="space-y-4">
 				{/* Content Warning */}
-				{contentWarning !== null && (
+				{showContentWarning && (
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-1">
-							Content Warning (optional)
+							Content Warning
 						</label>
 						<input
 							type="text"
@@ -68,6 +116,7 @@ function CreatePost() {
 							onChange={(e) => setContentWarning(e.target.value)}
 							className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
 							placeholder="Warn others about sensitive content"
+							maxLength={200}
 						/>
 					</div>
 				)}
@@ -77,15 +126,27 @@ function CreatePost() {
 					<textarea
 						value={content}
 						onChange={(e) => setContent(e.target.value)}
-						className="w-full p-3 border rounded-md resize-none focus:ring-green-500 focus:border-green-500"
+						className={`w-full p-3 border rounded-md resize-none focus:ring-green-500 focus:border-green-500 ${isOverLimit ? "border-red-500" : ""
+							}`}
 						rows="4"
 						placeholder="What's happening in your neighborhood?"
-						maxLength="500"
 					/>
-					<div className="text-right text-sm text-gray-500 mt-1">
-						{content.length}/500
+					<div
+						className={`text-right text-sm mt-1 ${remainingChars < 100
+								? isOverLimit
+									? "text-red-600"
+									: "text-yellow-600"
+								: "text-gray-500"
+							}`}
+					>
+						{remainingChars < 100 && `${remainingChars} characters remaining`}
 					</div>
 				</div>
+
+				{/* Image Upload */}
+				{showImageUpload && (
+					<FileUpload onFileSelect={selectFile} maxSize={10 * 1024 * 1024} />
+				)}
 
 				{/* Options */}
 				<div className="space-y-3">
@@ -101,53 +162,71 @@ function CreatePost() {
 									type="button"
 									onClick={() => setVisibility(option.value)}
 									className={`p-3 border rounded-md text-left transition-colors ${visibility === option.value
-											? 'border-green-500 bg-green-50'
-											: 'border-gray-200 hover:border-gray-300'
+											? "border-green-500 bg-green-50"
+											: "border-gray-200 hover:border-gray-300"
 										}`}
 								>
 									<div className="flex items-center space-x-2">
 										<option.icon className="w-4 h-4" />
 										<span className="font-medium">{option.label}</span>
 									</div>
-									<p className="text-xs text-gray-500 mt-1">{option.description}</p>
+									<p className="text-xs text-gray-500 mt-1">
+										{option.description}
+									</p>
 								</button>
 							))}
 						</div>
 					</div>
 
-					{/* Location Toggle */}
-					{hasLocation && (
+					{/* Additional Options */}
+					<div className="flex flex-wrap gap-4">
+						{hasLocation && (
+							<label className="flex items-center space-x-2">
+								<input
+									type="checkbox"
+									checked={includeLocation}
+									onChange={(e) => setIncludeLocation(e.target.checked)}
+									className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+								/>
+								<span className="text-sm text-gray-700">
+									Include approximate location
+								</span>
+							</label>
+						)}
+
 						<label className="flex items-center space-x-2">
 							<input
 								type="checkbox"
-								checked={includeLocation}
-								onChange={(e) => setIncludeLocation(e.target.checked)}
+								checked={localOnly}
+								onChange={(e) => setLocalOnly(e.target.checked)}
 								className="rounded border-gray-300 text-green-600 focus:ring-green-500"
 							/>
-							<span className="text-sm text-gray-700">Include approximate location</span>
+							<span className="text-sm text-gray-700">
+								Keep on this instance only
+							</span>
 						</label>
-					)}
+					</div>
 
-					{/* Local Only Toggle */}
-					<label className="flex items-center space-x-2">
-						<input
-							type="checkbox"
-							checked={localOnly}
-							onChange={(e) => setLocalOnly(e.target.checked)}
-							className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-						/>
-						<span className="text-sm text-gray-700">Keep on this instance only</span>
-					</label>
+					{/* Action Buttons */}
+					<div className="flex items-center space-x-2">
+						<button
+							type="button"
+							onClick={() => setShowImageUpload(!showImageUpload)}
+							className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+						>
+							<Image className="w-4 h-4" />
+							<span>Image</span>
+						</button>
 
-					{/* Content Warning Toggle */}
-					<button
-						type="button"
-						onClick={() => setContentWarning(contentWarning === null ? '' : null)}
-						className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800"
-					>
-						<AlertTriangle className="w-4 h-4" />
-						<span>Add content warning</span>
-					</button>
+						<button
+							type="button"
+							onClick={() => setShowContentWarning(!showContentWarning)}
+							className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+						>
+							<AlertTriangle className="w-4 h-4" />
+							<span>Content Warning</span>
+						</button>
+					</div>
 				</div>
 
 				{/* Submit */}
@@ -156,20 +235,22 @@ function CreatePost() {
 						<selectedVisibility.icon className="w-4 h-4" />
 						<span>{selectedVisibility.label}</span>
 						{localOnly && <span>• Local Only</span>}
-						{includeLocation && <span>• Location Included</span>}
+						{includeLocation && <span>• Location</span>}
 					</div>
 
 					<button
 						type="submit"
-						disabled={!content.trim() || createPostMutation.isPending}
+						disabled={
+							!content.trim() || isOverLimit || createPostMutation.isPending
+						}
 						className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						{createPostMutation.isPending ? 'Posting...' : 'Post'}
+						{createPostMutation.isPending ? "Posting..." : "Post"}
 					</button>
 				</div>
 			</form>
 		</div>
-	)
+	);
 }
 
-export default CreatePost
+export default CreatePost;
