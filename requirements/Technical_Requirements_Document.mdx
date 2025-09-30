@@ -202,6 +202,20 @@ POST /users/{username}/outbox   # Send activities (authenticated)
 
 ## 7. Infrastructure and Deployment
 
+### 7.1 AWS Architecture
+```
+Internet Gateway
+    │
+Application Load Balancer
+    │
+┌─────────────────┐    ┌─────────────────┐
+│   EC2 Instance  │    │   RDS Instance  │
+│   (Nginx +      │◄──►│   (PostgreSQL)  │
+│    Django)      │    │                 │
+└─────────────────┘    └─────────────────┘
+```
+
+
 ---
 
 ## 8. Success Criteria
