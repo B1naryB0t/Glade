@@ -1,12 +1,21 @@
 # backend/accounts/urls.py
 from django.urls import path
-from views import RegisterView, UserProfileView, follow_user, login_view
+
+from . import views
 
 urlpatterns = [
-    path("register/", RegisterView.as_view(), name="register"),
-    path("login/", login_view, name="login"),
-    path("profile/<str:username>/", UserProfileView.as_view(), name="user-profile"),
-    path("auth/", include("accounts.urls")),
-    path("posts/", include("posts.urls")),
-    path("follow/<str:username>/", follow_user, name="follow-user"),
+    path("register/", views.RegisterView.as_view(), name="register"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
+    path("verify-email/<str:token>/", views.verify_email, name="verify-email"),
+    path(
+        "resend-verification/",
+        views.resend_verification_email,
+        name="resend-verification",
+    ),
+    path(
+        "profile/<str:username>/", views.UserProfileView.as_view(), name="user-profile"
+    ),
+    path("profile/<str:username>/avatar/", views.upload_avatar, name="upload-avatar"),
+    path("follow/<str:username>/", views.follow_user, name="follow-user"),
 ]
