@@ -142,21 +142,30 @@
 
 ## 5. Security Requirements
 
----
+### 5.1 Authentication & Authorization
+- **Password Policy**: Minimum 8 characters, complexity requirements
+- **JWT Tokens**: 
+  - Access tokens: 15-minute expiration
+  - Refresh tokens: 7-day expiration, rotation on use
+- **Session Management**: Secure cookie settings
 
-## 8. User Interface Requirements
+### 5.2 Data Protection
+- **Encryption at Rest**: Database encryption (AWS RDS)
+- **Encryption in Transit**: ???
+- **PII Handling**: Hash sensitive data
 
----
+### 5.3 Input Validation
+- **SQL Injection**: Parameterized queries via Django ORM
+- **XSS Prevention**: Content sanitization, CSP headers
+- **Rate Limiting**: 
+  - Authentication: 5 attempts per 15 minutes
+  - API calls: 100 requests per minute per user
+  - Federation: 1000 requests per hour per server
 
-## 9. ActivityPub Integration (needs clarification)
-
----
-
-## 10. Infrastructure and Deployment
-
----
-
-## 11. Testing and Quality Assurance (at the advisement of tester)
+### 5.4 Privacy Controls
+- **Location Privacy**: Opt-in location sharing, coarse-grained data
+- **Content Privacy**: User-controlled visibility settings
+- **Federation Privacy**: Option to limit federation participation
 
 
 ---
