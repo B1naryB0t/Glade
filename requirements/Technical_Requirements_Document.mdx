@@ -172,6 +172,32 @@
 
 ## 6. ActivityPub Integration (needs clarification)
 
+### 6.1 Actor Implementation
+- **Actor Type**: Person (for users)
+- **Required Properties**: id, type, preferredUsername, inbox, outbox
+- **Optional Properties**: name, summary, icon, publicKey
+
+### 6.2 Activity Types (MVP)
+- **Create**: New post creation
+- **Follow**: Follow requests
+- **Accept**: Follow request acceptance
+- **Undo**: Unfollow, unlike actions
+
+### 6.3 Federation Endpoints
+```
+GET  /.well-known/webfinger     # WebFinger discovery
+GET  /users/{username}          # Actor object
+GET  /users/{username}/inbox    # Actor inbox (authenticated)
+POST /users/{username}/inbox    # Receive activities
+GET  /users/{username}/outbox   # Actor outbox (public)
+POST /users/{username}/outbox   # Send activities (authenticated)
+```
+
+### 6.4 HTTP Signatures (needs clarification)
+- **Algorithm**: rsa-sha256
+- **Headers**: (request-target) host date digest
+- **Key Management**: RSA 2048-bit keys per actor
+
 ---
 
 ## 7. Infrastructure and Deployment
