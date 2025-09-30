@@ -41,6 +41,36 @@
 
 ## 2. System Architecture
 
+### 2.1 Architecture Pattern
+**Microservices-Ready Monolith**: Start with a modular monolith that can be split into microservices as needed.
+
+### 2.2 High-Level Components
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Nginx         │    │   Backend API   │    │   Database      │
+│   (React SPA)   │◄──►│   (Reverse      │◄──►│   (Django +     │◄──►│   (PostgreSQL)  │
+│                 │    │    Proxy)       │    │    DRF)         │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                      │
+                                                      ▼
+                                               ┌─────────────────┐
+                                               │  ActivityPub    │
+                                               │  Federation     │
+                                               └─────────────────┘
+```
+
+### 2.3 API Design
+- **REST API**: Primary interface for frontend communication
+- **ActivityPub API**: Federation endpoints following W3C specification
+
+### 2.4 Data Flow
+1. User interacts with React frontend
+2. Frontend makes authenticated API calls to Nginx
+3. Nginx routes requests to Django backend
+4. Django processes requests and updates PostgreSQL database
+5. ActivityPub events trigger federation activities
+6. External federation updates received via inbox
+
 
 ---
 
