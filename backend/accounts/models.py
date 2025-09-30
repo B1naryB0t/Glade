@@ -1,12 +1,14 @@
 # backend/accounts/models.py
-
+import secrets
 import uuid
+from datetime import timedelta
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.gis.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -18,6 +20,7 @@ class User(AbstractUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
+    email_verified = models.BooleanField(default=False)
     display_name = models.CharField(max_length=100, blank=True)
     bio = models.TextField(max_length=500, blank=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
@@ -33,6 +36,10 @@ class User(AbstractUser):
     public_key = models.TextField(blank=True)
     private_key = models.TextField(blank=True)
 
+    # Security
+    last_password_change = models.DateTimeField(auto_now_add=True)
+    require_password_change = models.BooleanField(default=False)
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -46,6 +53,16 @@ class User(AbstractUser):
         # Set actor URI
         if not self.actor_uri:
             self.actor_uri = f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}"
+
+        # Sanitize fields
+        from services.validation_service import InputValidationService
+
+        if self.display_name:
+            self.display_name = InputValidationService.sanitize_plain_text(
+                self.display_name
+            )[:100]
+        if self.bio:
+            self.bio = InputValidationService.sanitize_plain_text(self.bio)[:500]
 
         super().save(*args, **kwargs)
 
@@ -89,7 +106,6 @@ class User(AbstractUser):
                 "publicKeyPem": self.public_key,
             },
             "endpoints": {"sharedInbox": f"https://{settings.INSTANCE_DOMAIN}/inbox"},
-            # Glade-specific extensions
             "glade:location": (
                 {
                     "type": "Place",
@@ -118,11 +134,8 @@ class Follow(models.Model):
     following = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="followers"
     )
-
-    # Federation
-    activity_id = models.URLField(blank=True)  # ActivityPub Follow activity ID
+    activity_id = models.URLField(blank=True)
     accepted = models.BooleanField(default=False)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -137,3 +150,77 @@ class Follow(models.Model):
             "actor": self.follower.actor_uri,
             "object": self.following.actor_uri,
         }
+
+
+class EmailVerificationToken(models.Model):
+    """Email verification tokens"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="verification_tokens"
+    )
+    token = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        """Check if token is still valid"""
+        return not self.used and self.expires_at > timezone.now()
+
+
+class LoginAttempt(models.Model):
+    """Track login attempts for security"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="login_attempts",
+    )
+    username = models.CharField(max_length=150)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.CharField(max_length=255, blank=True)
+    success = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["username", "ip_address", "-created_at"]),
+            models.Index(fields=["ip_address", "-created_at"]),
+        ]
+
+
+class SecurityEvent(models.Model):
+    """Track security-related events"""
+
+    EVENT_TYPES = [
+        ("password_change", "Password Change"),
+        ("email_change", "Email Change"),
+        ("ip_change", "IP Address Change"),
+        ("suspicious_activity", "Suspicious Activity"),
+        ("account_locked", "Account Locked"),
+        ("account_unlocked", "Account Unlocked"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="security_events"
+    )
+    event_type = models.CharField(max_length=50, choices=EVENT_TYPES)
+    details = models.TextField()
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["event_type", "-created_at"]),
+        ]
