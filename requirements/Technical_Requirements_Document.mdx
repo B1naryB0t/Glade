@@ -11,18 +11,31 @@
 
 ## 1. Non-Functional Requirements
 
-### 2.2 Content Management
-- **FR-007**: Create text-based posts
-- **FR-008**: Delete posts with confirmation
-- **FR-009**: Post privacy controls (public/followers/private)
-- **FR-010**: Content moderation (user reporting, blocking) ???
+### 1.1 Performance Requirements (initial values are assumed to be perceived as responsive)
+- **NFR-001**: Page load time < 2 seconds on 3G connection (Regular 3G (↓ 750Kbps ↑ 250Kbps latency: 100ms))
+- **NFR-002**: Support 100 concurrent users (MVP scale)
+- **NFR-003**: Database query response time < 500ms
+- **NFR-004**: API response time < 1 second for 95% of requests
 
-### 2.3 Location Features
-- **FR-011**: Optional location tagging for posts (city/region level, neighborhood?)
-- **FR-012**: Location-based content filtering
-- **FR-013**: Location privacy controls (show/hide location)
-- **FR-014**: Geographic content discovery
+### 1.2 Usability Requirements
+- **NFR-005**: Responsive design (mobile, tablet, desktop)
+- **NFR-006**: Intuitive navigation with max 3 clicks to any feature
 
+### 1.3 Reliability Requirements
+- **NFR-007**: 99% uptime during business hours
+- **NFR-008**: Graceful degradation when external services fail
+- **NFR-009**: Data backup every 24 hours
+
+### 1.4 Security Requirements
+- **NFR-010**: JWT token expiration (15 minutes access, 7 days refresh)
+- **NFR-011**: Rate limiting (100 requests/minute per user)
+- **NFR-012**: Input validation and sanitization
+
+### 1.5 Maintainability Requirements
+- **NFR-013**: Code coverage > 80% for critical paths (tester decides values here)
+- **NFR-014**: Automated testing pipeline
+- **NFR-015**: API documentation
+- **NFR-016**: Basic logging and monitoring
 
 ---
 
