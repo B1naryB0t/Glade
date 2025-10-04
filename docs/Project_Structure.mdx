@@ -18,18 +18,18 @@
 ```
 Glade/
 ├── backend/                          # Server-side applications
-│   ├── glade/
-│   │   ├── settings.py               # django project settings
+│   ├── glade/                        # Main Django project
 │   │   ├── settings/                 # Environment-specific settings
+│   │   │   ├── __init__.py           # settings module init
 │   │   │   ├── base.py               # base configuration
 │   │   │   ├── development.py        # development environment
 │   │   │   └── production.py         # production environment
 │   │   ├── urls.py                   # main url routing
 │   │   ├── wsgi.py                   # wsgi application
 │   │   ├── asgi.py                   # asgi application (async)
-│   │   └── celery_app.py             # ???
+│   │   └── celery_app.py             # celery configuration
 │   │
-│   ├── accounts/                     # ???
+│   ├── accounts/                     # User Authentication & Management
 │   │   ├── models.py                 # user, follow, email verification models
 │   │   ├── views.py                  # authentication & user api endpoints
 │   │   ├── serializers.py            # request/response schemas
@@ -45,20 +45,20 @@ Glade/
 │   │   ├── admin.py                  # admin interface
 │   │   └── apps.py                   # django app configuration
 │   │
-│   ├── federation/                   # ActivityPub
+│   ├── federation/                   # ActivityPub Protocol
 │   │   ├── models.py                 # remote instance, remote user, activity
 │   │   ├── views.py                  # activitypub endpoints
 │   │   ├── services.py               # federation business logic
 │   │   ├── tasks.py                  # celery tasks for federation
-│   │   ├── handlers.py               # activity handlers
 │   │   ├── urls.py                   # federation routes
-│   │   └── apps.py                   # django app configuration
 │   │
 │   ├── notifications/                # Notification System
 │   │   ├── models.py                 # notification, notificationpreference
 │   │   ├── views.py                  # notification api endpoints
 │   │   ├── serializers.py            # notification schemas
-│   │   └── apps.py                   # django app configuration
+│   │   ├── services.py               # notification business logic
+│   │   ├── tasks.py                  # celery tasks for notifications
+│   │   └── urls.py                   # notification routes
 │   │
 │   ├── privacy/                      # Privacy Controls
 │   │   ├── middleware.py             # privacy middleware
@@ -69,7 +69,12 @@ Glade/
 │   │   ├── email_service.py          # email functionality
 │   │   └── security_service.py       # security utilities
 │   │
-│   ├── templates/                    # django templates
+│   ├── templates/                    # Django templates
+│   │   └── emails/                   # Email templates
+│   │       ├── notification.html     # notification email
+│   │       ├── password_reset.html   # password reset email
+│   │       └── verify_email.html     # email verification
+│   │
 │   ├── manage.py                     # django management script
 │   └── .env                          # backend environment variables
 │
@@ -77,39 +82,43 @@ Glade/
 │   ├── src/
 │   │   ├── components/               # react components
 │   │   ├── hooks/                    # custom react hooks
+│   │   ├── pages/                    # page components
 │   │   ├── services/                 # api client services
 │   │   ├── App.jsx                   # main application component
 │   │   ├── main.jsx                  # application entry point
 │   │   └── index.css                 # global styles
 │   ├── package.json                  # node.js dependencies
 │   ├── vite.config.js                # vite build configuration
-│   └── tailwind.config.js            # tailwind css configuration
+│   ├── tailwind.config.js            # tailwind css configuration
+│   └── index.html                    # html entry point
 │
 ├── infrastructure/                   # Deployment and infrastructure
 │   └── docker/                       # Container configurations
-│       ├── docker-compose.yml        # multi-service orchestration
+│       ├── docker-compose.yml        # base multi-service orchestration (dev)
+│       ├── docker-compose.override.yml # dev-specific overrides
 │       ├── Dockerfile.backend        # backend container
 │       ├── Dockerfile.frontend       # frontend container
 │       └── nginx.conf                # reverse proxy configuration
 │
 ├── requirements/                     # Python dependencies
-│   ├── base.txt                      
-│   ├── development.txt
-│   └── production.txt
+│   ├── base.txt                      # production dependencies
+│   ├── development.txt               # dev tools (debug toolbar, testing, etc.)
+│   └── production.txt                # production-specific packages
 │
 ├── scripts/                          # Utility scripts
 │   ├── demo-data.py                  # create demo data for testing
-│   └── quick-setup.sh                # quick development setup
+│   ├── dev-setup.sh                  # one-time development environment setup
+│   └── quick-setup.sh                # quick development setup (legacy)
 │
 ├── docs/                             # Documentation (internal/external)
+│   ├── Development_Setup_Guide.md
 │   ├── Technical_Requirements_Document.mdx
 │   ├── database-models-uml.md        
-│   ├── Project_Structure.mdx         
-|   └── mvp-plan-revised.mdx          
+│   └── Project_Structure.mdx         # this file
 │
+├── .gitignore
 ├── LICENSE                           
 ├── README.md                         
-└── requirements.txt                  # Root Python dependencies
 ```
 
 ---
@@ -130,15 +139,14 @@ Glade/
 
 ### **API:**
 - `views.py`, `serializers.py`, `urls.py` per domain
-- Versioned in `api/v1/`, `api/v2/`, etc.
 
 ---
 
 ## Import Conventions
 
-While PEP 8 generally recommends absolute imports, Django projects follow a specific convention to ensure apps are reusable and self-contained.
+PEP 8 generally recommends absolute imports, Django projects follow a specific convention to ensure apps are reusable and self-contained.
 
-https://docs.djangoproject.com/en/5.2/intro/reusable-apps/
+[https://docs.djangoproject.com/en/5.2/intro/reusable-apps/](https://docs.djangoproject.com/en/5.2/intro/reusable-apps/)
 
 - **Intra-App Imports (within the same app):** Use **explicit relative imports**. This prevents tying an app to a specific project name, making it modular and reusable.
 
@@ -146,11 +154,6 @@ https://docs.djangoproject.com/en/5.2/intro/reusable-apps/
   # Correct: In accounts/views.py
   from .models import User
   from .serializers import UserSerializer
-  ```
-
-  ```python
-  # Incorrect:
-  from glade.accounts.models import User
   ```
 
 - **Inter-App Imports (between different apps):** Use **absolute imports**. This makes dependencies between apps clear and explicit.
