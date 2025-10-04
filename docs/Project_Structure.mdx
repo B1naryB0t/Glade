@@ -136,18 +136,29 @@ Glade/
 
 ## Import Conventions
 
-### **Absolute Imports Only:**
-```python
-# ✅ Good
-from services.account_service import AccountService
-from models.user import User
-from api.v1.accounts.serializers import UserSerializer
+While PEP 8 generally recommends absolute imports, Django projects follow a specific convention to ensure apps are reusable and self-contained.
 
-# ❌ Bad
-from ..services.account_service import AccountService
-from .models import User
-```
+https://docs.djangoproject.com/en/5.2/intro/reusable-apps/
 
+- **Intra-App Imports (within the same app):** Use **explicit relative imports**. This prevents tying an app to a specific project name, making it modular and reusable.
+
+  ```python
+  # Correct: In accounts/views.py
+  from .models import User
+  from .serializers import UserSerializer
+  ```
+
+  ```python
+  # Incorrect:
+  from glade.accounts.models import User
+  ```
+
+- **Inter-App Imports (between different apps):** Use **absolute imports**. This makes dependencies between apps clear and explicit.
+
+  ```python
+  # Correct: In posts/views.py, importing a model from the accounts app
+  from accounts.models import User
+  ```
 ---
 
 **Document Control**
