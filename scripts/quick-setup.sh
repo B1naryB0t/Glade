@@ -35,26 +35,7 @@ docker-compose up -d postgres redis
 echo "Waiting for database..."
 sleep 10
 
-echo "Checking if PostGIS extension is enabled..."
-if ! docker-compose exec -T postgres psql -U glade -d glade -tAc "SELECT 1 FROM pg_extension WHERE extname='postgis';" | grep -q 1; then
-    echo "Enabling PostGIS extension..."
-    docker-compose exec -T postgres psql -U glade -d glade -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-else
-    echo "PostGIS extension already enabled."
-fi
-
-# Build backend with optional --no-cache flag
-# If --no-cache is passed as the first argument, use it; otherwise build with cache
-if [[ "$1" == "--no-cache" ]]; then
-    echo "Building backend without cache..."
-    docker-compose build --no-cache backend
-else
-    echo "Building backend with cache..."
-    docker-compose build backend
-fi
-
-# Start backend
-echo "Starting backend..."
+# Build and start backend
 docker-compose up -d backend
 
 # Wait for backend
