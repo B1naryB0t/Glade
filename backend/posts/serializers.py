@@ -1,7 +1,7 @@
 # backend/posts/serializers.py
 from accounts.serializers import UserSerializer
 from django.contrib.gis.geos import Point
-from models import Post
+from .models import Post
 from privacy.services import PrivacyService
 from rest_framework import serializers
 
