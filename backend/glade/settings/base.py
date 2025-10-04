@@ -7,7 +7,8 @@ from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config("SECRET_KEY")
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me")
+DEBUG = config("DEBUG", default=False, cast=bool)
 
 # Application definition
 DJANGO_APPS = [
