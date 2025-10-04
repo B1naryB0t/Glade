@@ -2,7 +2,7 @@ import os
 import dj_database_url
 from pathlib import Path
 
-from celery.schedules import crontab
+# from celery.schedules import crontab # disabled until later stages of development
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,7 +31,7 @@ LOCAL_APPS = [
     "accounts",
     "posts",
     "federation",
-    "communities",
+    # "communities", # does not exist
     "privacy",
     "notifications",
 ]
@@ -41,7 +41,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # "whitenoise.middleware.WhiteNoiseMiddleware",  # not currently needed
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -49,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "privacy.middleware.PrivacyMiddleware",
+    # "federation.middleware.ActivityPubMiddleware",  # does not exist
 ]
 
 ROOT_URLCONF = "glade.urls"
@@ -119,7 +120,7 @@ USE_TZ = True
 # Static files
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Media files
 MEDIA_URL = "/media/"
@@ -205,15 +206,16 @@ SESSION_COOKIE_AGE = 1209600  # 2 weeks
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 
+# unnecessary for this stage of the project
 # Celery Beat Schedule (for cleanup tasks)
-
-CELERY_BEAT_SCHEDULE = {
-    "cleanup-old-notifications": {
-        "task": "notifications.tasks.cleanup_old_notifications",
-        "schedule": crontab(hour=2, minute=0),  # Run at 2 AM daily
-    },
-    "cleanup-old-login-attempts": {
-        "task": "notifications.tasks.cleanup_old_login_attempts",
-        "schedule": crontab(hour=2, minute=30),  # Run at 2:30 AM daily
-    },
-}
+#
+# CELERY_BEAT_SCHEDULE = {
+#     "cleanup-old-notifications": {
+#         "task": "notifications.tasks.cleanup_old_notifications",
+#         "schedule": crontab(hour=2, minute=0),  # Run at 2 AM daily
+#     },
+#     "cleanup-old-login-attempts": {
+#         "task": "notifications.tasks.cleanup_old_login_attempts",
+#         "schedule": crontab(hour=2, minute=30),  # Run at 2:30 AM daily
+#     },
+# }
