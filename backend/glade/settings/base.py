@@ -1,5 +1,5 @@
-# backend/glade/settings/base.py
 import os
+import dj_database_url
 from pathlib import Path
 
 from celery.schedules import crontab
@@ -71,17 +71,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "glade.wsgi.application"
 
-# Database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": config("DB_NAME", default="glade"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config("DB_PASSWORD", default=""),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+
+# Use DATABASE_URL if available, otherwise fallback to individual settings
+db_from_env = dj_database_url.config(default=config("DATABASE_URL", default=""))
+if db_from_env:
+    DATABASES = {"default": db_from_env}
+    # Override engine to use PostGIS for GIS support
+    DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            "NAME": config("DB_NAME", default="glade"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
     }
-}
 
 # Cache
 CACHES = {
