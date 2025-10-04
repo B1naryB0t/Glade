@@ -35,7 +35,14 @@ docker-compose up -d postgres redis
 echo "Waiting for database..."
 sleep 10
 
-# Build and start backend
+echo "Checking if PostGIS extension is enabled..."
+if ! docker-compose exec -T postgres psql -U glade -d glade -tAc "SELECT 1 FROM pg_extension WHERE extname='postgis';" | grep -q 1; then
+    echo "Enabling PostGIS extension..."
+    docker-compose exec -T postgres psql -U glade -d glade -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+else
+    echo "PostGIS extension already enabled."
+fi
+
 docker-compose up -d backend
 
 # Wait for backend
