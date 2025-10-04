@@ -18,3 +18,4 @@ passlib==1.7.4
 middleware==1.2.3
 pydantic-settings==2.10.1
 dj-database-url==3.0.1
+bleach==6.0.0
