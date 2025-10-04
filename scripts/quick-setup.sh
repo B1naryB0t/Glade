@@ -43,6 +43,18 @@ else
     echo "PostGIS extension already enabled."
 fi
 
+# Build backend with optional --no-cache flag
+# If --no-cache is passed as the first argument, use it; otherwise build with cache
+if [[ "$1" == "--no-cache" ]]; then
+    echo "Building backend without cache..."
+    docker-compose build --no-cache backend
+else
+    echo "Building backend with cache..."
+    docker-compose build backend
+fi
+
+# Start backend
+echo "Starting backend..."
 docker-compose up -d backend
 
 # Wait for backend
