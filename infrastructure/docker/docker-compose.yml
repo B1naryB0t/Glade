@@ -44,7 +44,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ../../backend:/app/backend:ro
+      - ../../backend:/app/backend
     command: python manage.py runserver 0.0.0.0:8000
 
   frontend:
