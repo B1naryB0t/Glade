@@ -1,3 +1,7 @@
+# Docker Compose configuration for DEVELOPMENT environment
+# For production, use docker-compose.prod.yml (to be created)
+name: Glade
+
 services:
   postgres:
     image: postgis/postgis:15-3.3
@@ -35,9 +39,12 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://glade:glade_dev_password@postgres:5432/glade
-      REDIS_URL: redis://redis:6379
-      INSTANCE_DOMAIN: localhost:8000
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: demo-secret-key-change-in-production
       DEBUG: "True"
+      INSTANCE_DOMAIN: localhost:8000
+      INSTANCE_NAME: Glade Demo
+      FEDERATION_ENABLED: "False"
     depends_on:
       postgres:
         condition: service_healthy

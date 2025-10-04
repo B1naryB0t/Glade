@@ -1,0 +1,15 @@
+# Docker Compose override for DEVELOPMENT environment
+# This file is automatically merged with docker-compose.yml by docker-compose
+# It adds development-specific configurations
+
+services:
+  backend:
+    # Mount requirements directory so dev dependencies are available
+    volumes:
+      - ../../requirements:/app/requirements:ro
+    # Install dev dependencies on container startup
+    command: >
+      sh -c "
+        pip install --no-cache-dir -r /app/requirements/development.txt &&
+        python manage.py runserver 0.0.0.0:8000
+      "
