@@ -1,59 +1,54 @@
-// frontend/src/services/authService.js
-import { apiClient } from "./apiClient";
+import { apiClient } from './apiClient';
 
 export const authService = {
-	async login(credentials) {
-		const formData = new FormData();
-		formData.append("username", credentials.username);
-		formData.append("password", credentials.password);
+  login: async ({ email, password }) => {
+    try {
+      console.log('AuthService: Attempting login');
+      
+      const response = await apiClient.post('/auth/login/', {
+        username: email, // Backend uses 'username' not 'email'
+        password: password
+      });
+      
+      console.log('AuthService: Login successful', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('AuthService: Login failed', error);
+      throw new Error(error.response?.data?.message || 'Login failed');
+    }
+  },
 
-		const response = await apiClient.post("/auth/login/", formData, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
-		return response.data;
-	},
+  register: async ({ username, email, password }) => {
+    try {
+      console.log('AuthService: Attempting registration');
+      
+      const response = await apiClient.post('/auth/register/', {
+        username: username,
+        email: email,
+        password: password,
+        password_confirm: password, // Backend requires password confirmation
+        display_name: username // Optional display name
+      });
+      
+      console.log('AuthService: Registration successful', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('AuthService: Registration failed', error);
+      throw new Error(error.response?.data?.message || 'Registration failed');
+    }
+  },
 
-	async register(userData) {
-		const response = await apiClient.post("/auth/register/", userData);
-		return response.data;
-	},
-
-	async logout() {
-		const response = await apiClient.post("/auth/logout/");
-		return response.data;
-	},
-
-	async getCurrentUser() {
-		const response = await apiClient.get("/auth/profile/me/");
-		return response.data;
-	},
-
-	async updateProfile(profileData) {
-		const response = await apiClient.put("/auth/profile/me/", profileData);
-		return response.data;
-	},
-
-	async verifyEmail(token) {
-		const response = await apiClient.post(`/auth/verify-email/${token}/`);
-		return response.data;
-	},
-
-	async resendVerificationEmail() {
-		const response = await apiClient.post("/auth/resend-verification/");
-		return response.data;
-	},
-
-	async uploadAvatar(file) {
-		const formData = new FormData();
-		formData.append("avatar", file);
-
-		const response = await apiClient.post(
-			"/auth/profile/me/avatar/",
-			formData,
-			{
-				headers: { "Content-Type": "multipart/form-data" },
-			},
-		);
-		return response.data;
-	},
+  getCurrentUser: async () => {
+    try {
+      console.log('AuthService: Fetching current user');
+      
+      const response = await apiClient.get('/auth/profile/me/');
+      
+      console.log('AuthService: Current user fetched', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('AuthService: Failed to fetch current user', error);
+      throw new Error('Failed to fetch user data');
+    }
+  }
 };

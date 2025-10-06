@@ -1,37 +1,62 @@
-// frontend/src/services/apiClient.js
-import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
-
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
+﻿// TEMPORARY MOCK - Replace with apiClient.REAL_BACKUP.js when backend is ready
+const mockApiClient = {
+  defaults: { headers: { common: {} } },
+  
+  interceptors: {
+    request: { use: () => {} },
+    response: { use: () => {} }
   },
-  timeout: 10000,
-})
-
-// Request interceptor for auth token
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+  
+  async post(url, data) {
+    console.log(' Mock POST:', url, data);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (url.includes('/auth/login')) {
+      const username = data.get ? data.get('username') : data.username;
+      return {
+        data: {
+          access_token: 'mock_token_' + Date.now(),
+          user: { 
+            id: 1, 
+            username: username || 'demo_user',
+            email: (username || 'demo') + '@example.com'
+          }
+        }
+      };
     }
-    return config
+    
+    if (url.includes('/auth/register')) {
+      return {
+        data: {
+          access_token: 'mock_token_' + Date.now(),
+          user: {
+            id: 1,
+            username: data.username,
+            email: data.email
+          }
+        }
+      };
+    }
+    
+    return { data: { success: true } };
   },
-  (error) => Promise.reject(error)
-)
-
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+  
+  async get(url) {
+    console.log(' Mock GET:', url);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    if (url.includes('/auth/profile/me')) {
+      return {
+        data: { 
+          id: 1, 
+          username: 'demo_user', 
+          email: 'demo@example.com' 
+        }
+      };
     }
-    return Promise.reject(error)
+    
+    return { data: {} };
   }
-)
+};
+
+export const apiClient = mockApiClient;
