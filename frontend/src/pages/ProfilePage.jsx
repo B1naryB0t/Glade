@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import FollowButton from '../components/users/FollowButton';
 
 function ProfilePage() {
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
   const [profileUser, setProfileUser] = useState(null);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
 
@@ -19,7 +19,6 @@ function ProfilePage() {
   const loadProfile = async () => {
     try {
       // TODO: Replace with actual API call
-      // Simulate API call
       const mockProfile = {
         id: parseInt(userId),
         username: `user_${userId}`,
@@ -35,7 +34,7 @@ function ProfilePage() {
       const mockPosts = [
         {
           id: 1,
-          content: 'Just had an amazing coffee at a local café! ☕',
+          content: 'Just had an amazing coffee at a local cafe! ☕',
           created_at: '2024-09-25T10:30:00Z',
           city: 'Charlotte',
           region: 'North Carolina'
@@ -51,21 +50,10 @@ function ProfilePage() {
 
       setProfileUser(mockProfile);
       setPosts(mockPosts);
-      setIsFollowing(Math.random() > 0.5); // Random for demo
     } catch (error) {
       console.error('Failed to load profile:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFollow = async () => {
-    try {
-      // TODO: Replace with actual API call
-      setIsFollowing(!isFollowing);
-      console.log(`${isFollowing ? 'Unfollowed' : 'Followed'} user ${userId}`);
-    } catch (error) {
-      console.error('Follow action failed:', error);
     }
   };
 
@@ -109,7 +97,7 @@ function ProfilePage() {
               </h1>
               <p className="text-gray-600">{profileUser.email}</p>
               {profileUser.location && (
-                <p className="text-sm text-gray-500"> {profileUser.location}</p>
+                <p className="text-sm text-gray-500">📍 {profileUser.location}</p>
               )}
               <p className="text-sm text-gray-500">
                 Joined {new Date(profileUser.joined_date).toLocaleDateString()}
@@ -117,17 +105,12 @@ function ProfilePage() {
             </div>
           </div>
           
+          {/* Follow Button */}
           {!isOwnProfile && (
-            <button
-              onClick={handleFollow}
-              className={`px-4 py-2 rounded-md font-medium ${
-                isFollowing
-                  ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-            >
-              {isFollowing ? 'Unfollow' : 'Follow'}
-            </button>
+            <FollowButton 
+              userId={profileUser.id} 
+              username={profileUser.username}
+            />
           )}
         </div>
 
@@ -172,20 +155,16 @@ function ProfilePage() {
           {posts.length > 0 ? (
             posts.map((post) => (
               <div key={post.id} className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="text-gray-900 mb-2">{post.content}</p>
-                    {(post.city || post.region) && (
-                      <p className="text-sm text-gray-500 mb-2">
-                        📍 {post.city}{post.city && post.region && ', '}{post.region}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500">
-                      {new Date(post.created_at).toLocaleDateString()} at{' '}
-                      {new Date(post.created_at).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
+                <p className="text-gray-900 mb-2">{post.content}</p>
+                {(post.city || post.region) && (
+                  <p className="text-sm text-gray-500 mb-2">
+                    📍 {post.city}{post.city && post.region && ', '}{post.region}
+                  </p>
+                )}
+                <p className="text-sm text-gray-500">
+                  {new Date(post.created_at).toLocaleDateString()} at{' '}
+                  {new Date(post.created_at).toLocaleTimeString()}
+                </p>
               </div>
             ))
           ) : (
