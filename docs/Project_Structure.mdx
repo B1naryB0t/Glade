@@ -1,0 +1,157 @@
+# Project Structure Documentation
+## Glade - Privacy-Focused Social Media Platform
+
+**Document Version**: 1.0  
+**Date**: October 4, 2025  
+**Purpose**: Define clear project organization and file structure conventions
+
+---
+
+## Current Architecture
+
+**Structure:** Monorepo
+**Design:** Loosely Layered
+
+
+## Current Structure
+
+```
+Glade/
+├── backend/                          # Server-side applications
+│   ├── glade/
+│   │   ├── settings.py               # django project settings
+│   │   ├── settings/                 # Environment-specific settings
+│   │   │   ├── base.py               # base configuration
+│   │   │   ├── development.py        # development environment
+│   │   │   └── production.py         # production environment
+│   │   ├── urls.py                   # main url routing
+│   │   ├── wsgi.py                   # wsgi application
+│   │   ├── asgi.py                   # asgi application (async)
+│   │   └── celery_app.py             # ???
+│   │
+│   ├── accounts/                     # ???
+│   │   ├── models.py                 # user, follow, email verification models
+│   │   ├── views.py                  # authentication & user api endpoints
+│   │   ├── serializers.py            # request/response schemas
+│   │   ├── urls.py                   # account-related routes
+│   │   ├── admin.py                  # admin interface config
+│   │   └── apps.py                   # django app configuration
+│   │
+│   ├── posts/                        # Content Management
+│   │   ├── models.py                 # post, like models
+│   │   ├── views.py                  # post api endpoints
+│   │   ├── serializers.py            # post schemas
+│   │   ├── urls.py                   # post routes
+│   │   ├── admin.py                  # admin interface
+│   │   └── apps.py                   # django app configuration
+│   │
+│   ├── federation/                   # ActivityPub
+│   │   ├── models.py                 # remote instance, remote user, activity
+│   │   ├── views.py                  # activitypub endpoints
+│   │   ├── services.py               # federation business logic
+│   │   ├── tasks.py                  # celery tasks for federation
+│   │   ├── handlers.py               # activity handlers
+│   │   ├── urls.py                   # federation routes
+│   │   └── apps.py                   # django app configuration
+│   │
+│   ├── notifications/                # Notification System
+│   │   ├── models.py                 # notification, notificationpreference
+│   │   ├── views.py                  # notification api endpoints
+│   │   ├── serializers.py            # notification schemas
+│   │   └── apps.py                   # django app configuration
+│   │
+│   ├── privacy/                      # Privacy Controls
+│   │   ├── middleware.py             # privacy middleware
+│   │   └── services.py               # privacy business logic
+│   │
+│   ├── services/                     # 🟡 SHARED: Business logic services
+│   │   ├── validation_service.py     # input validation and sanitization
+│   │   ├── email_service.py          # email functionality
+│   │   └── security_service.py       # security utilities
+│   │
+│   ├── templates/                    # django templates
+│   ├── manage.py                     # django management script
+│   └── .env                          # backend environment variables
+│
+├── frontend/                         # React frontend application
+│   ├── src/
+│   │   ├── components/               # react components
+│   │   ├── hooks/                    # custom react hooks
+│   │   ├── services/                 # api client services
+│   │   ├── App.jsx                   # main application component
+│   │   ├── main.jsx                  # application entry point
+│   │   └── index.css                 # global styles
+│   ├── package.json                  # node.js dependencies
+│   ├── vite.config.js                # vite build configuration
+│   └── tailwind.config.js            # tailwind css configuration
+│
+├── infrastructure/                   # Deployment and infrastructure
+│   └── docker/                       # Container configurations
+│       ├── docker-compose.yml        # multi-service orchestration
+│       ├── Dockerfile.backend        # backend container
+│       ├── Dockerfile.frontend       # frontend container
+│       └── nginx.conf                # reverse proxy configuration
+│
+├── requirements/                     # Python dependencies
+│   ├── base.txt                      
+│   ├── development.txt
+│   └── production.txt
+│
+├── scripts/                          # Utility scripts
+│   ├── demo-data.py                  # create demo data for testing
+│   └── quick-setup.sh                # quick development setup
+│
+├── docs/                             # Documentation (internal/external)
+│   ├── Technical_Requirements_Document.mdx
+│   ├── database-models-uml.md        
+│   ├── Project_Structure.mdx         
+|   └── mvp-plan-revised.mdx          
+│
+├── LICENSE                           
+├── README.md                         
+└── requirements.txt                  # Root Python dependencies
+```
+
+---
+
+## File Naming Conventions
+
+### **Services:**
+- `{domain}_service.py` (e.g., `account_service.py`)
+- Class: `{Domain}Service` (e.g., `AccountService`)
+
+### **Repositories:**
+- `{domain}_repository.py` (e.g., `user_repository.py`)
+- Class: `{Domain}Repository` (e.g., `UserRepository`)
+
+### **Models:**
+- `{domain}.py` (e.g., `user.py`, `post.py`)
+- Class: `{Entity}` (e.g., `User`, `Post`)
+
+### **API:**
+- `views.py`, `serializers.py`, `urls.py` per domain
+- Versioned in `api/v1/`, `api/v2/`, etc.
+
+---
+
+## Import Conventions
+
+### **Absolute Imports Only:**
+```python
+# ✅ Good
+from services.account_service import AccountService
+from models.user import User
+from api.v1.accounts.serializers import UserSerializer
+
+# ❌ Bad
+from ..services.account_service import AccountService
+from .models import User
+```
+
+---
+
+**Document Control**
+- **Next Review**: Weekly during development
+- **Last Updated:** October 4, 2025
+- **Approval**: Team
+- **Distribution**: Public
