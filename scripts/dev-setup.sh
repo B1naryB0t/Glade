@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Quick Glade Setup for Demo"
+echo "Glade Development Environment - One-Time Setup"
 
 # Check prerequisites
 if ! command -v docker &> /dev/null; then
@@ -14,40 +14,30 @@ if ! command -v docker-compose &> /dev/null; then
     exit 1
 fi
 
-# Create .env file
-echo " Creating environment configuration..."
-cat > backend/.env << EOF
-DATABASE_URL=postgresql://glade:glade_dev_password@localhost:5432/glade
-REDIS_URL=redis://localhost:6379/0
-SECRET_KEY=demo-secret-key-change-in-production
-DEBUG=True
-INSTANCE_DOMAIN=localhost:8000
-INSTANCE_NAME=Glade Demo
-FEDERATION_ENABLED=False
-EOF
-
 # Start services
 echo "Starting services..."
 cd infrastructure/docker
-docker-compose up -d postgres redis
+docker-compose up -d
 
-# Wait for database
-echo "Waiting for database..."
-sleep 10
-
-# Build and start backend
-docker-compose up -d backend
-
-# Wait for backend
-echo "Waiting for backend..."
+# Wait for services to be healthy
+echo "Waiting for services to start..."
 sleep 15
 
-# Run migrations
-echo "Setting up database..."
+# ONE-TIME SETUP: Enable PostGIS extension
+echo "Checking if PostGIS extension is enabled..."
+if ! docker-compose exec -T postgres psql -U glade -d glade -tAc "SELECT 1 FROM pg_extension WHERE extname='postgis';" | grep -q 1; then
+    echo "Enabling PostGIS extension..."
+    docker-compose exec -T postgres psql -U glade -d glade -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+else
+    echo "PostGIS extension already enabled."
+fi
+
+# ONE-TIME SETUP: Run initial migrations
+echo "Running initial migrations..."
 docker-compose exec backend python manage.py makemigrations accounts posts federation privacy
 docker-compose exec backend python manage.py migrate
 
-# Create superuser
+# ONE-TIME SETUP: Create demo superuser
 echo "Creating demo user..."
 docker-compose exec backend python manage.py shell -c "
 from accounts.models import User
@@ -56,10 +46,8 @@ if not User.objects.filter(username='demo').exists():
     print('Demo user created: demo/demo123')
 "
 
-# Start frontend
-docker-compose up -d frontend celery
-
-echo "Demo setup complete!"
+echo ""
+echo "✅ Development environment setup complete!"
 echo ""
 echo "🌐 Access Glade:"
 echo "   Frontend: http://localhost:3000"
@@ -70,4 +58,8 @@ echo "Demo credentials:"
 echo "   Username: demo"
 echo "   Password: demo123"
 echo ""
-echo "To stop: cd infrastructure/docker && docker-compose down"
+echo "To stop all services:"
+echo "  - From project root:"
+echo "     docker-compose -f infrastructure/docker/docker-compose.yml down"
+echo "  - From infrastructure/docker:"
+echo "     docker-compose down"

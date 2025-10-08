@@ -1,7 +1,7 @@
 # backend/accounts/serializers.py
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from models import User
+from .models import User
 from rest_framework import serializers
 
 

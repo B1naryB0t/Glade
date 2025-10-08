@@ -1,13 +1,13 @@
 # backend/accounts/views.py
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
-from models import EmailVerificationToken, Follow, User
+from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from serializers import (
+from .serializers import (
     UserProfileSerializer,
     UserRegistrationSerializer,
     UserSerializer,
