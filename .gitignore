@@ -34,6 +34,15 @@ build/
 # Git metadata (should be ignored automatically)
 .git/
 
+# Coverage and test artifacts
+coverage/
+**/coverage/
+playwright-report/
+test-results/
+*.trace.zip
+
+.venv/
+venv/
 # Python-related files
 __pycache__/
 *.py[cod]
