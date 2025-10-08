@@ -33,3 +33,7 @@ build/
 
 # Git metadata (should be ignored automatically)
 .git/
+
+# Python virtual env
+.venv/
+venv/
