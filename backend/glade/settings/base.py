@@ -1,13 +1,14 @@
-# backend/glade/settings/base.py
 import os
+import dj_database_url
 from pathlib import Path
 
-from celery.schedules import crontab
+# from celery.schedules import crontab # disabled until later stages of development
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config("SECRET_KEY")
+SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me")
+DEBUG = config("DEBUG", default=False, cast=bool)
 
 # Application definition
 DJANGO_APPS = [
@@ -30,7 +31,7 @@ LOCAL_APPS = [
     "accounts",
     "posts",
     "federation",
-    "communities",
+    # "communities", # does not exist
     "privacy",
     "notifications",
 ]
@@ -40,7 +41,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # "whitenoise.middleware.WhiteNoiseMiddleware",  # not currently needed
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -48,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "privacy.middleware.PrivacyMiddleware",
+    # "federation.middleware.ActivityPubMiddleware",  # does not exist
 ]
 
 ROOT_URLCONF = "glade.urls"
@@ -70,17 +72,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "glade.wsgi.application"
 
-# Database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": config("DB_NAME", default="glade"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config("DB_PASSWORD", default=""),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="5432"),
+
+# Use DATABASE_URL if available, otherwise fallback to individual settings
+db_from_env = dj_database_url.config(default=config("DATABASE_URL", default=""))
+if db_from_env:
+    DATABASES = {"default": db_from_env}
+    # Override engine to use PostGIS for GIS support
+    DATABASES["default"]["ENGINE"] = "django.contrib.gis.db.backends.postgis"
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            "NAME": config("DB_NAME", default="glade"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
     }
-}
 
 # Cache
 CACHES = {
@@ -111,7 +120,7 @@ USE_TZ = True
 # Static files
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Media files
 MEDIA_URL = "/media/"
@@ -197,15 +206,16 @@ SESSION_COOKIE_AGE = 1209600  # 2 weeks
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = True
 
+# unnecessary for this stage of the project
 # Celery Beat Schedule (for cleanup tasks)
-
-CELERY_BEAT_SCHEDULE = {
-    "cleanup-old-notifications": {
-        "task": "notifications.tasks.cleanup_old_notifications",
-        "schedule": crontab(hour=2, minute=0),  # Run at 2 AM daily
-    },
-    "cleanup-old-login-attempts": {
-        "task": "notifications.tasks.cleanup_old_login_attempts",
-        "schedule": crontab(hour=2, minute=30),  # Run at 2:30 AM daily
-    },
-}
+#
+# CELERY_BEAT_SCHEDULE = {
+#     "cleanup-old-notifications": {
+#         "task": "notifications.tasks.cleanup_old_notifications",
+#         "schedule": crontab(hour=2, minute=0),  # Run at 2 AM daily
+#     },
+#     "cleanup-old-login-attempts": {
+#         "task": "notifications.tasks.cleanup_old_login_attempts",
+#         "schedule": crontab(hour=2, minute=30),  # Run at 2:30 AM daily
+#     },
+# }

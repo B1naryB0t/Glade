@@ -33,34 +33,3 @@ build/
 
 # Git metadata (should be ignored automatically)
 .git/
-
-# Coverage and test artifacts
-coverage/
-**/coverage/
-playwright-report/
-test-results/
-*.trace.zip
-
-.venv/
-venv/
-# Python-related files
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.sqlite3
-
-# Django-related files
-*.log
-*.pot
-*.pyc
-*.pyo
-*.db
-
-# Frontend build artifacts
-frontend/dist/
-frontend/build/
-
-# Docker-related files
-infrastructure/docker/*.env
-infrastructure/docker/*.log
