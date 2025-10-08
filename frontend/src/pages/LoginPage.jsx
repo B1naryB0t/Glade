@@ -55,10 +55,7 @@ function LoginPage() {
     setErrors({});
     
     try {
-      const result = await login(formData.email, formData.password);
-      if (!result.success) {
-        setErrors({ submit: result.error || 'Login failed' });
-      }
+      const result = await login({ username: formData.email, password: formData.password });
       // If successful, the user will be automatically redirected by the router
     } catch (error) {
       setErrors({ submit: 'An unexpected error occurred' });
