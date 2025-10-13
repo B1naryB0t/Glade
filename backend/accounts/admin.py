@@ -15,7 +15,7 @@ class CustomUserAdmin(UserAdmin):
         "created_at",
     )
     list_filter = ("privacy_level", "federation_enabled", "created_at")
-    fieldsets = UserAdmin.fieldsets + (
+    fieldsets = list(UserAdmin.fieldsets) + [
         ("Profile", {"fields": ("display_name", "bio", "avatar")}),
         (
             "Privacy",
@@ -28,7 +28,7 @@ class CustomUserAdmin(UserAdmin):
             },
         ),
         ("Federation", {"fields": ("federation_enabled", "actor_uri")}),
-    )
+    ]
 
 
 @admin.register(Follow)
