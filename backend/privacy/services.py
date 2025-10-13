@@ -1,12 +1,9 @@
 # backend/privacy/services.py
 import math
 import random
-from typing import Optional, Tuple
-
+from typing import Tuple
 from accounts.models import Follow, User
 from django.conf import settings
-from django.contrib.gis.db.models.functions import Distance
-from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from posts.models import Post
 

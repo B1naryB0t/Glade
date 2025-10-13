@@ -1,7 +1,6 @@
 # backend/federation/urls.py
 from django.urls import path
-
-from . import views
+import views
 
 urlpatterns = [
     # Well-known endpoints

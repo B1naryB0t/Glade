@@ -4,9 +4,7 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from django.conf import settings
 from posts.models import Post
-
-from .models import RemoteUser
-from .services import ActivityPubService
+from services import ActivityPubService
 
 
 @shared_task

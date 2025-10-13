@@ -1,7 +1,6 @@
 # backend/services/security_service.py
 import logging
 from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
 from django.core.cache import cache

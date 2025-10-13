@@ -1,6 +1,5 @@
 # backend/posts/models.py
 import uuid
-
 from django.conf import settings
 from django.contrib.gis.db import models
 

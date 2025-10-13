@@ -1,6 +1,5 @@
 # backend/federation/views.py
 import json
-
 from accounts.models import User
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
@@ -8,8 +7,6 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from posts.models import Post
-
-# from .handlers import ActivityHandler # this does not exist
 
 
 def webfinger(request):

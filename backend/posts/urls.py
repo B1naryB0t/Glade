@@ -1,7 +1,7 @@
 # backend/posts/urls.py
 from django.urls import path
+import views
 
-from . import views
 
 urlpatterns = [
     path("", views.PostListCreateView.as_view(), name="post-list-create"),

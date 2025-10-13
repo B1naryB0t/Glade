@@ -1,7 +1,5 @@
 # backend/services/validation_service.py
 import re
-from io import BytesIO
-
 import bleach
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator

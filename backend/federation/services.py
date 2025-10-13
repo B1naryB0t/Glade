@@ -4,16 +4,14 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from urllib.parse import urlparse
-
 import httpx
 from accounts.models import User
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from django.conf import settings
 from django.core.cache import cache
-
-from .models import Activity, RemoteInstance, RemoteUser
+from models import Activity, RemoteInstance, RemoteUser
 
 
 class ActivityPubService:
