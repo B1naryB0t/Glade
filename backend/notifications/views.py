@@ -2,10 +2,9 @@
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
-from .models import Notification, NotificationPreference
-from .serializers import NotificationPreferenceSerializer, NotificationSerializer
-from .services import NotificationService
+from models import Notification, NotificationPreference
+from serializers import NotificationPreferenceSerializer, NotificationSerializer
+from services import NotificationService
 
 
 class NotificationListView(generics.ListAPIView):

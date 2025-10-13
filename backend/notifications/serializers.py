@@ -1,8 +1,7 @@
 # backend/notifications/serializers.py
 from accounts.serializers import UserSerializer
 from rest_framework import serializers
-
-from .models import Notification, NotificationPreference
+from models import Notification, NotificationPreference
 
 
 class NotificationSerializer(serializers.ModelSerializer):

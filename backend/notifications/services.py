@@ -1,11 +1,8 @@
 # backend/notifications/services.py
-from typing import Optional
-
 from django.contrib.auth import get_user_model
 from django.db import transaction
-
-from .models import Notification, NotificationPreference
-from .tasks import send_notification_email
+from models import Notification, NotificationPreference
+from tasks import send_notification_email
 
 User = get_user_model()
 
