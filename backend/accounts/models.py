@@ -55,7 +55,7 @@ class User(AbstractUser):
             self.actor_uri = f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}"
 
         # Sanitize fields
-        from services.validation_service import InputValidationService
+        from backend.services.validation_service import InputValidationService
 
         if self.display_name:
             self.display_name = InputValidationService.sanitize_plain_text(
