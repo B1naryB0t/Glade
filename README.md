@@ -17,16 +17,16 @@ docker-compose exec backend python /app/scripts/demo-data.py
 ```mermaid
 sequenceDiagram
     participant Client as Client/User
-    participant API as FastAPI / Django API
+    participant API as Django API
     participant Middleware as Privacy & RateLimit Middleware
     participant UserService as UserService
     participant LocationService as LocationService
     participant PrivacyService as PrivacyService
     participant Serializer as PostSerializer / PostCreateSerializer
-    participant PostModel as Post Model (Django / SQLAlchemy)
+    participant PostModel as Django
     participant LikeModel as Like Model
     participant DB as Database
-    participant Celery as Celery / Federation Task
+    participant Celery as Celery
 
     %% === Middleware & Request Start ===
     Client->>API: Request (create post / like / fetch nearby posts/users)
