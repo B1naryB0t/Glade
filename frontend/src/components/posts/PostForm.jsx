@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { LocationPicker } from '../location';
+import { PrivacySelector, LocationPrivacyControl } from '../privacy';
 
 function PostForm({ onPostCreated }) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [location, setLocation] = useState(null);
   const [visibility, setVisibility] = useState('public');
+  const [locationPrivacy, setLocationPrivacy] = useState('city'); // NEW
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -15,8 +17,14 @@ function PostForm({ onPostCreated }) {
 
   // Handle location selection from LocationPicker
   const handleLocationSelect = (selectedLocation) => {
-    console.log('📍 Location selected in PostForm:', selectedLocation);
     setLocation(selectedLocation);
+    // If location is cleared, reset location privacy to 'none'
+    if (!selectedLocation) {
+      setLocationPrivacy('none');
+    } else if (locationPrivacy === 'none') {
+      // If adding location and privacy was 'none', default to 'city'
+      setLocationPrivacy('city');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -52,30 +60,48 @@ function PostForm({ onPostCreated }) {
         likes: 0
       };
 
-      // Add location data ONLY if location exists
-      if (location) {
-        console.log('✅ Adding location to post:', location);
-        newPost.city = location.city || null;
-        newPost.region = location.region || null;
-        newPost.country = location.country || null;
-        newPost.country_code = location.countryCode || null;
+      // Add location data based on privacy settings
+      if (location && locationPrivacy !== 'none') {
+        // Apply location privacy filtering
+        switch (locationPrivacy) {
+          case 'country':
+            newPost.city = null;
+            newPost.region = null;
+            newPost.country = location.country || null;
+            newPost.country_code = location.countryCode || null;
+            break;
+          case 'region':
+            newPost.city = null;
+            newPost.region = location.region || null;
+            newPost.country = location.country || null;
+            newPost.country_code = location.countryCode || null;
+            break;
+          case 'city':
+            newPost.city = location.city || null;
+            newPost.region = location.region || null;
+            newPost.country = location.country || null;
+            newPost.country_code = location.countryCode || null;
+            break;
+          default:
+            newPost.city = null;
+            newPost.region = null;
+            newPost.country = null;
+            newPost.country_code = null;
+        }
         
-        // Debug: Show what's being sent
-        console.log('📦 Post with location:', {
+        console.log('Post with location privacy:', {
+          locationPrivacy,
           city: newPost.city,
           region: newPost.region,
-          country: newPost.country,
-          country_code: newPost.country_code
+          country: newPost.country
         });
       } else {
-        console.log('ℹ️ No location selected');
+        // No location or privacy set to 'none'
         newPost.city = null;
         newPost.region = null;
         newPost.country = null;
         newPost.country_code = null;
       }
-
-      console.log('📤 Sending post to backend:', newPost);
 
       // Simulate API call (replace with real API when ready)
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -88,12 +114,11 @@ function PostForm({ onPostCreated }) {
       setContent('');
       setLocation(null);
       setVisibility('public');
-      
-      console.log('✅ Post created successfully');
+      setLocationPrivacy('city');
       
     } catch (err) {
       setError('Failed to create post. Please try again.');
-      console.error('❌ Post creation error:', err);
+      console.error('Post creation error:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,6 +127,7 @@ function PostForm({ onPostCreated }) {
   return (
     <div className="bg-gradient-to-br from-cream-light to-white rounded-2xl shadow-md border-2 border-cream p-6 mb-6">
       <form onSubmit={handleSubmit}>
+        {/* Post Content */}
         <div className="flex items-start space-x-4 mb-4">
           <div className="w-12 h-12 bg-gradient-to-br from-coral to-burgundy rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
             <span className="text-white font-bold text-lg">
@@ -144,26 +170,26 @@ function PostForm({ onPostCreated }) {
             onLocationSelect={handleLocationSelect}
             initialLocation={location}
           />
-          
-          
         </div>
 
-        {/* Visibility Selector */}
+        {/* Location Privacy Control - NEW */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-burgundy mb-2">
-            Who can see this?
-          </label>
-          <select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-            className="w-full px-4 py-2 border-2 border-cream rounded-xl focus:outline-none focus:ring-2 focus:ring-lime focus:border-transparent text-burgundy font-medium"
-          >
-            <option value="public">🌍 Public</option>
-            <option value="followers">👥 Followers</option>
-            <option value="private">🔒 Private</option>
-          </select>
+          <LocationPrivacyControl
+            value={locationPrivacy}
+            onChange={setLocationPrivacy}
+            hasLocation={!!location}
+          />
         </div>
 
+        {/* Privacy Selector - NEW (Replaces old dropdown) */}
+        <div className="mb-4">
+          <PrivacySelector
+            value={visibility}
+            onChange={setVisibility}
+          />
+        </div>
+
+        {/* Submit Button */}
         <div className="flex justify-end">
           <button
             type="submit"

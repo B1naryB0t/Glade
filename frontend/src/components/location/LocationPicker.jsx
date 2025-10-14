@@ -161,8 +161,9 @@ function LocationPicker({ onLocationSelect, initialLocation = null }) {
             </span>
           </div>
           <button
-            onClick={handleClearLocation}
-            className="text-coral hover:text-burgundy transition-colors"
+  type="button"
+  onClick={handleClearLocation}
+  className="text-coral hover:text-burgundy transition-colors"
             aria-label="Clear location"
           >
             <X className="w-4 h-4" />
@@ -170,8 +171,9 @@ function LocationPicker({ onLocationSelect, initialLocation = null }) {
         </div>
       ) : (
         <button
-          onClick={() => setIsOpen(true)}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2 border-2 border-coral rounded-lg text-burgundy hover:bg-coral-light transition-colors"
+  type="button"
+  onClick={() => setIsOpen(true)}
+  className="w-full flex items-center justify-center space-x-2 px-4 py-2 border-2 border-coral rounded-lg text-burgundy hover:bg-coral-light transition-colors"
         >
           <MapPin className="w-4 h-4" />
           <span className="text-sm font-medium">Add Location</span>
