@@ -14,8 +14,9 @@ from posts.models import Post
 class PrivacyService:
     """Handle privacy-related operations"""
 
+    @staticmethod
     def apply_location_privacy(
-        self, lat: float, lng: float, privacy_level: int = 2
+            lat: float, lng: float, privacy_level: int = 2
     ) -> Tuple[float, float]:
         """Apply location fuzzing based on privacy level"""
         if privacy_level >= 3:  # High privacy
@@ -53,13 +54,15 @@ class PrivacyService:
 
         return False
 
-    def _is_follower(self, follower: User, following: User) -> bool:
+    @staticmethod
+    def _is_follower(follower: User, following: User) -> bool:
         """Check if user follows another user"""
         return Follow.objects.filter(
             follower=follower, following=following, accepted=True
         ).exists()
 
-    def _is_in_local_area(self, user: User, post: Post) -> bool:
+    @staticmethod
+    def _is_in_local_area(user: User, post: Post) -> bool:
         """Check if user is in the local area for a post"""
         if not user.approximate_location or not post.location:
             return False
