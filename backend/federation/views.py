@@ -98,21 +98,21 @@ def post_view(request, post_id):
     )
 
 
-def nodeinfo_discovery(request):
+def node_info_discovery(request):
     """NodeInfo discovery endpoint"""
     return JsonResponse(
         {
             "links": [
                 {
                     "rel": "http://nodeinfo.diaspora.software/ns/schema/2.0",
-                    "href": f"https://{settings.INSTANCE_DOMAIN}/nodeinfo/2.0",
+                    "href": f"https://{settings.INSTANCE_DOMAIN}/node_info/2.0",
                 }
             ]
         }
     )
 
 
-def nodeinfo(request):
+def node_info(request):
     """NodeInfo endpoint for instance metadata"""
     from accounts.models import User
     from posts.models import Post
@@ -131,7 +131,7 @@ def nodeinfo(request):
                 "users": {
                     "total": user_count,
                     "activeMonth": user_count,
-                    "activeHalfyear": user_count,
+                    "activeHalfYear": user_count,
                 },
                 "localPosts": post_count,
             },
