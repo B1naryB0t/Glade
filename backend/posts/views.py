@@ -5,12 +5,12 @@ from django.core.exceptions import ValidationError
 from federation.tasks import federate_post
 from .models import Like, Post
 from notifications.services import NotificationService
-from backend.privacy.services import PrivacyService
+from privacy.services import PrivacyService
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from .serializers import PostCreateSerializer, PostSerializer
-from backend.services.validation_service import InputValidationService, RateLimitService
+from services.validation_service import InputValidationService, RateLimitService
 
 
 class PostListCreateView(generics.ListCreateAPIView):
