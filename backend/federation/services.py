@@ -44,7 +44,7 @@ class ActivityPubService:
                 url=inbox_url,
                 headers=headers,
                 body=activity_json,
-                private_key=sender.private_key,
+                private_key_pem=sender.private_key,
                 key_id=f"{sender.actor_uri}#main-key",
             )
             headers["Signature"] = signature
