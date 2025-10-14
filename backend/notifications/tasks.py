@@ -1,7 +1,7 @@
 # backend/notifications/tasks.py
 from celery import shared_task
 from django.contrib.auth import get_user_model
-from services.email_service import NotificationEmailService
+from backend.services.email_service import NotificationEmailService
 
 from .models import Notification
 
