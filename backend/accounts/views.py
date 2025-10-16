@@ -7,10 +7,14 @@ from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .serializers import UserProfileSerializer, UserRegistrationSerializer, UserSerializer
-from backend.services.email_service import EmailVerificationService
-from backend.services.security_service import SecurityLoggingService, SessionManagementService
-from backend.services.validation_service import InputValidationService
+from .serializers import (
+    UserProfileSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+)
+from services.email_service import EmailVerificationService
+from services.security_service import SecurityLoggingService, SessionManagementService
+from services.validation_service import InputValidationService
 
 
 class RegisterView(generics.CreateAPIView):
