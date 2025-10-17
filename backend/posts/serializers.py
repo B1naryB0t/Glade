@@ -68,10 +68,12 @@ class PostSerializer(serializers.ModelSerializer):
             "is_liked",
         ]
 
-    def get_likes_count(self, obj):
+    @staticmethod
+    def get_likes_count(obj):
         return obj.likes.count()
 
-    def get_replies_count(self, obj):
+    @staticmethod
+    def get_replies_count(obj):
         return obj.replies.count()
 
     def get_is_liked(self, obj):
@@ -80,7 +82,8 @@ class PostSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
-    def get_location_name(self, obj):
+    @staticmethod
+    def get_location_name(obj):
         if obj.location:
             # This would integrate with a geocoding service
             # For now, return generic location

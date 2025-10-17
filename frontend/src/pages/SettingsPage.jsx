@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
 function SettingsPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const [settings, setSettings] = useState({
     email_notifications: true,
     location_sharing: 'city',
@@ -43,6 +43,12 @@ function SettingsPage() {
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out?')) {
       logout();
+    }
+  };
+
+  const handleDeletion = () => {
+    if (window.confirm('Are you sure you want to delete your account? This cannot be undone.')) {
+      deleteAccount();
     }
   };
 
@@ -111,9 +117,9 @@ function SettingsPage() {
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value="none">Don't share location</option>
-                  <option value="country">Country only</option>
+                  <option value="country">Country</option>
                   <option value="region">State/Region</option>
-                  <option value="city">City level</option>
+                  <option value="city">City</option>
                 </select>
                 <p className="text-sm text-gray-500 mt-1">
                   Control how much location information is shown on your posts
@@ -159,26 +165,23 @@ function SettingsPage() {
           </div>
 
           {/* Save Button */}
-          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-            <div>
-              {saveMessage && (
-                <p className={`text-sm ${saveMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
-                  {saveMessage}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
+          <div>
+            {saveMessage && (
+              <p className={`text-sm ${saveMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+                {saveMessage}
+              </p>
+            )}
           </div>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
 
-          {/* Danger Zone */}
+          {/* Log Out */}
           <div className="pt-6 border-t border-gray-200">
-            <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -194,6 +197,25 @@ function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Delete Account */}
+          <div className="pt-6 border-t border-gray-200">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">Delete your account</h3>
+                  <p className="text-sm text-red-600">This cannot be undone</p>
+                </div>
+                <button
+                  onClick={handleDeletion}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
