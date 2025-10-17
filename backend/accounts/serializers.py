@@ -48,13 +48,16 @@ class UserSerializer(serializers.ModelSerializer):
             "posts_count",
         ]
 
-    def get_followers_count(self, obj):
+    @staticmethod
+    def get_followers_count(obj):
         return obj.followers.filter(accepted=True).count()
 
-    def get_following_count(self, obj):
+    @staticmethod
+    def get_following_count(obj):
         return obj.following.filter(accepted=True).count()
 
-    def get_posts_count(self, obj):
+    @staticmethod
+    def get_posts_count(obj):
         return obj.posts.filter(visibility__in=[1, 2]).count()
 
 
