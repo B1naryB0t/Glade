@@ -67,7 +67,12 @@ function RegisterPage() {
     setErrors({});
     
     try {
-      const result = await register(formData.email, formData.password, formData.username);
+      const result = await register({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
+      });
+
       if (!result.success) {
         setErrors({ submit: result.error || 'Registration failed' });
       }
