@@ -15,6 +15,11 @@ class PostCreateSerializer(serializers.ModelSerializer):
         model = Post
         fields = ["content", "content_warning", "visibility", "local_only", "location"]
 
+    def validate_content(self, value):
+        """Validate and sanitize post content"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_post_content(value)
+
     def create(self, validated_data):
         request = self.context.get("request")
         user = request.user

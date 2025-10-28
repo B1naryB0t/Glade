@@ -20,6 +20,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Passwords don't match")
         return attrs
 
+    def validate_username(self, value):
+        """Validate and sanitize username"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_username(value)
+
     def create(self, validated_data):
         validated_data.pop("password_confirm")
         user = User.objects.create_user(**validated_data)
@@ -93,3 +98,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.following.filter(following=request.user, accepted=True).exists()
         return False
+
+    def validate_display_name(self, value):
+        """Validate and sanitize display name"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_display_name(value)
+
+    def validate_bio(self, value):
+        """Validate and sanitize bio"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_bio(value)

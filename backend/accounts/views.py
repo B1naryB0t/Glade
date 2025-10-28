@@ -25,16 +25,6 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        # Validate username
-        try:
-            username = request.data.get("username", "")
-            validated_username = InputValidationService.validate_username(username)
-            request.data._mutable = True
-            request.data["username"] = validated_username
-            request.data._mutable = False
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -204,25 +194,6 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-
-        # Validate fields
-        try:
-            if "display_name" in request.data:
-                display_name = InputValidationService.validate_display_name(
-                    request.data.get("display_name")
-                )
-                request.data._mutable = True
-                request.data["display_name"] = display_name
-                request.data._mutable = False
-
-            if "bio" in request.data:
-                bio = InputValidationService.validate_bio(request.data.get("bio"))
-                request.data._mutable = True
-                request.data["bio"] = bio
-                request.data._mutable = False
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
