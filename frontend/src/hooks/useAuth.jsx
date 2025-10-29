@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      setToken(data.access_token)
+      setToken(data.token)
       queryClient.invalidateQueries(['currentUser'])
     }
   })
