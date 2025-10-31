@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import LoginForm from "../../components/LoginForm";
 
 test("renders login form and submits", async () => {
@@ -13,4 +14,14 @@ test("renders login form and submits", async () => {
   fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
   expect(await screen.findByText(/welcome/i)).toBeInTheDocument();
+});
+
+
+test("shows error when submitting empty form", async () => {
+  
+  render(<LoginForm />);
+  
+  await userEvent.click(screen.getByRole("button", { name: /login/i }));
+  
+  expect(screen.getByText(/please enter credentials/i)).toBeInTheDocument();
 });
