@@ -1,13 +1,13 @@
 // frontend/src/__tests__/components/LoginForm.integration.test.tsx
-import { screen, fireEvent, waitFor } from "@testing-library/react";
-import { renderWithProvidersNoRouter } from "../../test-utils";
+import { screen, fireEvent, waitFor, render } from "@testing-library/react";
+import { renderWithProviders } from "../../test-utils";
 import LoginForm from "../../components/LoginForm";
-import { server } from "../mocks/server";
+import { server } from "../../hooks/server";
 import { http, HttpResponse } from "msw";
 
 describe("LoginForm integration", () => {
   test("logs in successfully", async () => {
-    renderWithProvidersNoRouter(<LoginForm />);
+    renderWithProviders(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText(/username/i), { 
       target: { value: "testuser" }
@@ -32,7 +32,7 @@ describe("LoginForm integration", () => {
       })
     );
 
-    renderWithProvidersNoRouter(<LoginForm />);
+    renderWithProviders(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText(/username/i), {
       target: { value: "" },

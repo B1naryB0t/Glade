@@ -12,5 +12,12 @@
     "playwright": "^1.56.0",
     "react": "^19.2.0",
     "vitest": "^3.2.4"
-  }
+  },
+  "scripts": {
+  "install:browsers": "playwright install --with-deps",
+  "test:headed": "playwright test --headed",
+  "report": "playwright show-report",
+  "test": "vitest --config vitest.config.ts",
+  "test:e2e": "playwright test"
+}
 }
