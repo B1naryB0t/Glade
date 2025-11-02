@@ -12,6 +12,15 @@ chmod +x scripts/quick-setup.sh
 # Add demo data
 cd infrastructure/docker
 docker-compose exec backend python /app/scripts/demo-data.py
+
+
+# Glade Testing Suite
+run Django + DRF + ActivityPub tests with Docker Compose and pytest.
+
+## Quickstart test
+```bash
+docker-compose -f infrastructure/docker/docker-compose.test.yml up --build
+docker-compose exec backend pytest --maxfail=1 --disable-warnings -q
 ```
 
 ```mermaid
