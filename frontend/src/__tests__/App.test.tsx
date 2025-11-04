@@ -1,9 +1,8 @@
-// App.test.tsx
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "../test-utils";
 import App from "../App";
 
-
 test("renders app shell", () => {
-  render(<App />);
-  expect(screen.getByText(/app/i)).toBeInTheDocument();
+  renderWithProviders(<App />);
+  expect(screen.getByText(/sign in to glade/i)).toBeInTheDocument();
 });
