@@ -1,0 +1,50 @@
+name: Glade Django Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: glade
+          POSTGRES_PASSWORD: glade
+          POSTGRES_DB: glade_test
+        options: >-
+          --health-cmd="pg_isready -U glade -d glade_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+
+    env:
+      DATABASE_URL: postgres://glade:glade@localhost:5432/glade_test
+      REDIS_URL: redis://localhost:6379/0
+      DJANGO_SETTINGS_MODULE: Glade.settings
+      CELERY_TASK_ALWAYS_EAGER: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/base.txt
+          pip install -r requirements/dev.txt
+          pip install pytest pytest-django pytest-factoryboy model-bakery coverage
+
+      - name: Run Tests
+        run: |
+          pytest -v --maxfail=1 --disable-warnings --cov=Glade.backend
