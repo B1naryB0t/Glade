@@ -47,19 +47,6 @@ class PostListCreateView(generics.ListCreateAPIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        # Validate content
-        try:
-            content = request.data.get("content", "")
-            validated_content = InputValidationService.validate_post_content(content)
-
-            # Update request data with validated content
-            request.data._mutable = True
-            request.data["content"] = validated_content
-            request.data._mutable = False
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         post = serializer.save()

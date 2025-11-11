@@ -129,6 +129,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
 
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "accounts.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
 # Celery
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = config("REDIS_URL", default="redis://127.0.0.1:6379/0")

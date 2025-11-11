@@ -28,20 +28,6 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        # Validate username
-        try:
-            username = request.data.get("username", "")
-            validated_username = InputValidationService.validate_username(username)
-            # request.data may be QueryDict (immutable) depending on parser, toggle mutability safely
-            if hasattr(request.data, "_mutable"):
-                request.data._mutable = True
-                request.data["username"] = validated_username
-                request.data._mutable = False
-            else:
-                request.data["username"] = validated_username
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -220,31 +206,6 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-
-        # Validate fields
-        try:
-            if "display_name" in request.data:
-                display_name = InputValidationService.validate_display_name(
-                    request.data.get("display_name")
-                )
-                if hasattr(request.data, "_mutable"):
-                    request.data._mutable = True
-                    request.data["display_name"] = display_name
-                    request.data._mutable = False
-                else:
-                    request.data["display_name"] = display_name
-
-            if "bio" in request.data:
-                bio = InputValidationService.validate_bio(request.data.get("bio"))
-                if hasattr(request.data, "_mutable"):
-                    request.data._mutable = True
-                    request.data["bio"] = bio
-                    request.data._mutable = False
-                else:
-                    request.data["bio"] = bio
-
-        except ValidationError as exc:
-            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
