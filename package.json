@@ -1,8 +1,9 @@
 {
   "devDependencies": {
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.56.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.7.0",
     "@types/react": "^19.2.2"
@@ -11,5 +12,12 @@
     "playwright": "^1.56.0",
     "react": "^19.2.0",
     "vitest": "^3.2.4"
-  }
+  },
+  "scripts": {
+  "install:browsers": "playwright install --with-deps",
+  "test:headed": "playwright test --headed",
+  "report": "playwright show-report",
+  "test": "vitest --config vitest.config.ts",
+  "test:e2e": "playwright test"
+}
 }

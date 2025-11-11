@@ -56,6 +56,12 @@ export function AuthProvider({ children }) {
     queryClient.clear()
   }
 
+  // Delete Account
+  const deleteAccount = async () => {
+    await authService.deleteAccount();
+    logout()
+  }
+
   const value = {
     user,
     isLoading: isLoading || loginMutation.isPending || registerMutation.isPending,

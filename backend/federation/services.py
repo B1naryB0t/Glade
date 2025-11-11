@@ -91,9 +91,9 @@ class ActivityPubService:
 
         return {}
 
+    @staticmethod
     async def _sign_request(
-        self,
-        method: str,
+            method: str,
         url: str,
         headers: dict,
         body: str,
@@ -135,7 +135,8 @@ class ActivityPubService:
 
         return f'keyId="{key_id}",algorithm="rsa-sha256",headers="{" ".join(signature_headers)}",signature="{signature_b64}"'
 
-    async def _cache_remote_user(self, actor_data: dict):
+    @staticmethod
+    async def _cache_remote_user(actor_data: dict):
         """Cache remote user data"""
         actor_uri = actor_data.get("id")
         if not actor_uri:
@@ -160,8 +161,9 @@ class ActivityPubService:
             },
         )
 
+    @staticmethod
     async def _log_activity(
-        self, activity: dict, direction: str, error: bool = False, error_msg: str = ""
+            activity: dict, direction: str, error: bool = False, error_msg: str = ""
     ):
         """Log ActivityPub activity"""
         await Activity.objects.acreate(

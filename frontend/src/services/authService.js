@@ -50,5 +50,19 @@ export const authService = {
       console.error('AuthService: Failed to fetch current user', error);
       throw new Error('Failed to fetch user data');
     }
+  },
+
+  deleteAccount: async () => {
+    try {
+      console.log('AuthService: Attempting to delete account');
+
+      const response = await apiClient.delete('/auth/delete/');
+
+      console.log('AuthService: Account deleted successfully', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('AuthService: Failed to delete account', error);
+      throw new Error(error.response?.data?.message || 'Failed to delete account');
+    }
   }
 };
