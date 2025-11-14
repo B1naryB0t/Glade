@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import FollowButton from '../components/users/FollowButton';
+import { api } from '../services/api';
+import PostCard from '../components/posts/PostCard'; // Make sure this is updated to the integrated version
 
 function ProfilePage() {
   const { userId } = useParams();
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  
   const [profileUser, setProfileUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const isOwnProfile = currentUser && currentUser.id.toString() === userId;
+  // This is very important - log everything to debug
+  console.log('ProfilePage rendering with userId:', userId);
+  console.log('Current user:', currentUser);
 
   useEffect(() => {
     loadProfile();
@@ -18,44 +24,38 @@ function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      // TODO: Replace with actual API call
-      const mockProfile = {
-        id: parseInt(userId),
-        username: `user_${userId}`,
-        email: `user${userId}@example.com`,
-        bio: 'This is a sample bio for the user profile.',
-        followers_count: 42,
-        following_count: 18,
-        posts_count: 7,
-        joined_date: '2024-01-15',
-        location: 'Charlotte, NC'
-      };
-
-      const mockPosts = [
-        {
-          id: 1,
-          content: 'Just had an amazing coffee at a local cafe! ☕',
-          created_at: '2024-09-25T10:30:00Z',
-          city: 'Charlotte',
-          region: 'North Carolina'
-        },
-        {
-          id: 2,
-          content: 'Beautiful sunset from uptown today 🌅',
-          created_at: '2024-09-24T19:45:00Z',
-          city: 'Charlotte',
-          region: 'North Carolina'
-        }
-      ];
-
-      setProfileUser(mockProfile);
-      setPosts(mockPosts);
-    } catch (error) {
-      console.error('Failed to load profile:', error);
+      setLoading(true);
+      console.log('Loading profile for userId:', userId);
+      
+      // Determine which ID to use
+      const profileId = userId === 'me' ? currentUser?.id || '1' : userId;
+      console.log('Using profile ID:', profileId);
+      
+      // Load user profile
+      const userData = await api.getUserProfile(profileId);
+      console.log('Profile data loaded:', userData);
+      setProfileUser(userData);
+      
+      // Load user's posts
+      const postsData = await api.getUserPosts(profileId);
+      console.log('User posts loaded:', postsData);
+      setPosts(postsData.results || []);
+      
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+      setError('Could not load the profile. The user may not exist or you may not have permission to view it.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Check if this is the current user's profile
+  const isOwnProfile = currentUser && (
+    userId === 'me' || 
+    userId === currentUser.id.toString() || 
+    (profileUser && profileUser.id === currentUser.id)
+  );
 
   if (loading) {
     return (
@@ -69,16 +69,51 @@ function ProfilePage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+        <div className="text-center mt-4">
+          <button 
+            onClick={() => navigate('/')}
+            className="text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!profileUser) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900">User not found</h2>
           <p className="text-gray-600 mt-2">The profile you're looking for doesn't exist.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Return to Home
+          </button>
         </div>
       </div>
     );
   }
+
+  console.log('Rendering profile for:', profileUser.username);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -95,22 +130,38 @@ function ProfilePage() {
               <h1 className="text-2xl font-bold text-gray-900">
                 {profileUser.username}
               </h1>
-              <p className="text-gray-600">{profileUser.email}</p>
+              {profileUser.email && (
+                <p className="text-gray-600">{profileUser.email}</p>
+              )}
               {profileUser.location && (
-                <p className="text-sm text-gray-500">📍 {profileUser.location}</p>
+                <p className="text-sm text-gray-500">
+                  📍 {profileUser.location.city}
+                  {profileUser.location.region ? `, ${profileUser.location.region}` : ''}
+                </p>
               )}
               <p className="text-sm text-gray-500">
-                Joined {new Date(profileUser.joined_date).toLocaleDateString()}
+                Joined {new Date(profileUser.created_at).toLocaleDateString()}
               </p>
             </div>
           </div>
           
-          {/* Follow Button */}
+          {/* Follow Button - Only shown on other users' profiles */}
           {!isOwnProfile && (
-            <FollowButton 
-              userId={profileUser.id} 
-              username={profileUser.username}
-            />
+            <button 
+              className={`px-4 py-2 rounded-md ${
+                profileUser.is_followed 
+                  ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
+              onClick={() => {
+                setProfileUser({
+                  ...profileUser,
+                  is_followed: !profileUser.is_followed
+                });
+              }}
+            >
+              {profileUser.is_followed ? 'Unfollow' : 'Follow'}
+            </button>
           )}
         </div>
 
@@ -124,19 +175,19 @@ function ProfilePage() {
         <div className="flex space-x-6 mt-6 pt-6 border-t border-gray-200">
           <div className="text-center">
             <div className="text-xl font-bold text-gray-900">
-              {profileUser.posts_count}
+              {posts.length || profileUser.posts_count || 0}
             </div>
             <div className="text-sm text-gray-500">Posts</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-gray-900">
-              {profileUser.followers_count}
+              {profileUser.followers_count || 0}
             </div>
             <div className="text-sm text-gray-500">Followers</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-bold text-gray-900">
-              {profileUser.following_count}
+              {profileUser.following_count || 0}
             </div>
             <div className="text-sm text-gray-500">Following</div>
           </div>
@@ -153,23 +204,24 @@ function ProfilePage() {
         
         <div className="divide-y divide-gray-200">
           {posts.length > 0 ? (
-            posts.map((post) => (
-              <div key={post.id} className="p-6">
-                <p className="text-gray-900 mb-2">{post.content}</p>
-                {(post.city || post.region) && (
-                  <p className="text-sm text-gray-500 mb-2">
-                    📍 {post.city}{post.city && post.region && ', '}{post.region}
-                  </p>
-                )}
-                <p className="text-sm text-gray-500">
-                  {new Date(post.created_at).toLocaleDateString()} at{' '}
-                  {new Date(post.created_at).toLocaleTimeString()}
-                </p>
+            posts.map(post => (
+              <div key={post.id} className="p-4">
+                <PostCard post={post} />
               </div>
             ))
           ) : (
-            <div className="p-6 text-center text-gray-500">
-              {isOwnProfile ? "You haven't posted anything yet." : "No posts to show."}
+            <div className="p-8 text-center text-gray-500">
+              No posts yet.
+              {isOwnProfile && (
+                <div className="mt-2">
+                  <button 
+                    onClick={() => navigate('/create')}
+                    className="text-indigo-600 hover:text-indigo-800 font-medium"
+                  >
+                    Create your first post
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
