@@ -50,7 +50,7 @@
 **Purpose**: Development-specific overrides (automatically merged)
 
 **What it does**:
-- Mounts `requirements/` directory into the backend container
+- Mounts `backend/requirements/` directory into the backend container
 - Installs development dependencies (`django-debug-toolbar`, testing tools, etc.) on container startup
 - Overrides the backend command to install dev packages before starting Django
 
@@ -68,7 +68,7 @@
 **What it does**:
 - Starts from a Python 3.11 base image
 - Installs system dependencies (gcc, PostGIS libraries, etc.)
-- Copies `requirements/base.txt` and installs **only** production Python packages
+- Copies `backend/requirements/base.txt` and installs **only** production Python packages
 - Copies the Django application code
 - Sets the working directory and exposes port 8000
 
@@ -137,7 +137,7 @@ docker-compose logs -f backend  # Follow logs
 
 ### ⚠️ When to Rebuild: Requirements or Major Changes
 
-**CRITICAL**: If you modify `requirements/` (or make other major changes), the changes won't automatically apply, you must rebuild.
+**CRITICAL**: If you modify `backend/requirements/` (or make other major changes), the changes won't automatically apply, you must rebuild.
 
 **How to rebuild**:
 ```bash

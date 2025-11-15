@@ -2,7 +2,6 @@ Django==5.2.6
 djangorestframework==3.16.1
 djangorestframework-gis==1.2.0
 django-cors-headers==4.9.0
-django-privacy==0.2
 psycopg2-binary==2.9.10
 redis==6.4.0
 celery==5.5.3
@@ -17,3 +16,5 @@ geoalchemy2==0.18.0
 passlib==1.7.4
 middleware==1.2.3
 pydantic-settings==2.10.1
+dj-database-url==3.0.1
+bleach==6.0.0
