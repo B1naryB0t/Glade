@@ -304,6 +304,30 @@ def follow_user(request, username):
             return Response({"following": False}, status=200)
         except Follow.DoesNotExist:
             return Response({"following": False}, status=200)
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def search_users(request):
+    """Search for users by username or display name"""
+    query = request.query_params.get("q", "").strip()
+    
+    if not query or len(query) < 2:
+        return Response({"results": [], "count": 0})
+    
+    # Search by username or display_name, only public profiles
+    users = User.objects.filter(
+        models.Q(username__icontains=query) | 
+        models.Q(display_name__icontains=query),
+        privacy_level=1  # Only public profiles are searchable
+    ).exclude(id=request.user.id)[:20]  # Limit to 20 results
+    
+    visible_users = li
+    for user in users:
+        # Check if user's privacy allows being found in search
+        # For now, all users are searchable, but you can add privacy checks here
+        visible_users.append(user)
+    
+    serializer = UserSerializer(visible_users, many=True, context={"request": request})
+    return Response({"results": serializer.data, "count": len(visible_users)})
 
 
 @api_view(["GET"])
