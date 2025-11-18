@@ -1,7 +1,7 @@
 # backend/posts/serializers.py
 from accounts.serializers import UserSerializer
 from django.contrib.gis.geos import Point
-from .models import Post
+from .models import Post, Comment
 from privacy.services import PrivacyService
 from rest_framework import serializers
 
@@ -94,3 +94,14 @@ class PostSerializer(serializers.ModelSerializer):
             # For now, return generic location
             return "Nearby"
         return None
+
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Comment serializer"""
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ["id", "post", "author", "content", "created_at"]
+        read_only_fields = ["id", "post", "author", "created_at"]

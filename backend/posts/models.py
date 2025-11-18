@@ -2,7 +2,10 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
+
+User = get_user_model()
 
 
 class Post(models.Model):
@@ -129,3 +132,19 @@ class Like(models.Model):
             "actor": self.user.actor_uri,
             "object": self.post.activity_id,
         }
+
+
+class Comment(models.Model):
+    """Comment on a post"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
+    content = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on {self.post.id}"

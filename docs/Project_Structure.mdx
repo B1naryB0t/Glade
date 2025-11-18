@@ -100,10 +100,11 @@ Glade/
 │       ├── Dockerfile.frontend       # frontend container
 │       └── nginx.conf                # reverse proxy configuration
 │
-├── requirements/                     # Python dependencies
-│   ├── base.txt                      # production dependencies
-│   ├── development.txt               # dev tools (debug toolbar, testing, etc.)
-│   └── production.txt                # production-specific packages
+├── backend/
+│   └── requirements/                 # Python dependencies
+│       ├── base.txt                  # production dependencies
+│       ├── development.txt           # dev tools (debug toolbar, testing, etc.)
+│       └── production.txt            # production-specific packages
 │
 ├── scripts/                          # Utility scripts
 │   ├── demo-data.py                  # create demo data for testing
