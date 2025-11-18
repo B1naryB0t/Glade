@@ -72,6 +72,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     avatar_url = serializers.ReadOnlyField()
     is_following = serializers.SerializerMethodField()
     is_follower = serializers.SerializerMethodField()
+    follow_requested = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -87,6 +90,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "is_following",
             "is_follower",
+            "follow_requested",
+            "followers_count",
+            "following_count",
         ]
         read_only_fields = ["id", "username", "created_at"]
 
@@ -101,6 +107,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.following.filter(following=request.user, accepted=True).exists()
         return False
+
+    def get_follow_requested(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.followers.filter(follower=request.user, accepted=False).exists()
+        return False
+
+    def get_followers_count(self, obj):
+        return obj.followers.filter(accepted=True).count()
+
+    def get_following_count(self, obj):
+        return obj.following.filter(accepted=True).count()
 
     def validate_display_name(self, value):
         """Validate and sanitize display name"""

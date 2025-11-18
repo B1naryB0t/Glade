@@ -272,17 +272,29 @@ def follow_user(request, username):
         return Response({"error": "Cannot follow yourself"}, status=400)
 
     if request.method == "POST":
+        # Auto-accept only for public profiles (privacy_level = 1)
+        auto_accept = target_user.privacy_level == 1
+        
         follow, created = Follow.objects.get_or_create(
-            follower=request.user, following=target_user
+            follower=request.user, 
+            following=target_user,
+            defaults={'accepted': auto_accept}
         )
 
         if created:
-            # Create notification
-            NotificationService.notify_follow(target_user, request.user)
+            # Create notification (catch errors if Celery/Redis unavailable)
+            try:
+                if auto_accept:
+                    NotificationService.notify_follow(target_user, request.user)
+                else:
+                    NotificationService.notify_follow_request(target_user, request.user)
+            except Exception as e:
+                print(f"Notification failed: {e}")
 
             # TODO: Send federation follow request if remote user
-            return Response({"following": True}, status=201)
-        return Response({"following": True}, status=200)
+            status_message = "following" if auto_accept else "requested"
+            return Response({"following": auto_accept, "requested": not auto_accept, "status": status_message}, status=201)
+        return Response({"following": follow.accepted, "requested": not follow.accepted, "status": "following" if follow.accepted else "requested"}, status=200)
 
     else:  # DELETE
         try:
@@ -292,3 +304,65 @@ def follow_user(request, username):
             return Response({"following": False}, status=200)
         except Follow.DoesNotExist:
             return Response({"following": False}, status=200)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def follow_requests(request):
+    """Get pending follow requests for the authenticated user"""
+    pending_follows = Follow.objects.filter(
+        following=request.user,
+        accepted=False
+    ).select_related('follower')
+    
+    requests_data = [
+        {
+            "id": str(follow.id),
+            "follower": UserSerializer(follow.follower).data,
+            "created_at": follow.created_at
+        }
+        for follow in pending_follows
+    ]
+    
+    return Response({"requests": requests_data}, status=200)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def accept_follow_request(request, follow_id):
+    """Accept a follow request"""
+    try:
+        follow = Follow.objects.get(
+            id=follow_id,
+            following=request.user,
+            accepted=False
+        )
+        follow.accepted = True
+        follow.save()
+        
+        # Notify the follower that their request was accepted
+        try:
+            NotificationService.notify_follow_accepted(follow.follower, request.user)
+        except Exception as e:
+            print(f"Notification failed: {e}")
+        
+        return Response({"message": "Follow request accepted"}, status=200)
+    except Follow.DoesNotExist:
+        return Response({"error": "Follow request not found"}, status=404)
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def reject_follow_request(request, follow_id):
+    """Reject a follow request"""
+    try:
+        follow = Follow.objects.get(
+            id=follow_id,
+            following=request.user,
+            accepted=False
+        )
+        follow.delete()
+        
+        return Response({"message": "Follow request rejected"}, status=200)
+    except Follow.DoesNotExist:
+        return Response({"error": "Follow request not found"}, status=404)
