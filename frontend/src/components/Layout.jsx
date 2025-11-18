@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import UserSearch from '../components/users/UserSearch';
 
 function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -34,6 +35,10 @@ function Layout({ children }) {
                   Home
                 </Link>
               </div>
+              <div className="flex-1 max-w-md mx-4">
+  <UserSearch />
+</div>
+
             </div>
             
             <div className="flex items-center space-x-4">

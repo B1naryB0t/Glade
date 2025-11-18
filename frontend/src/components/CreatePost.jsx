@@ -1,256 +1,248 @@
-// frontend/src/components/CreatePost.jsx
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Globe, Users, Lock, AlertTriangle, Image } from "lucide-react";
-import { postService } from "../services/postService";
-import { useLocation } from "../hooks/useLocation";
-import { useFileUpload } from "../hooks/useFileUpload";
-import { useErrorHandler } from "../hooks/useErrorHandler";
-import FileUpload from "./FileUpload";
-import ErrorAlert from "./ErrorAlert";
-
-const VISIBILITY_OPTIONS = [
-	{
-		value: 1,
-		label: "Public",
-		icon: Globe,
-		description: "Visible to everyone",
-	},
-	{
-		value: 2,
-		label: "Local",
-		icon: MapPin,
-		description: "Visible to nearby users",
-	},
-	{ value: 3, label: "Followers", icon: Users, description: "Followers only" },
-	{ value: 4, label: "Private", icon: Lock, description: "Only you" },
-];
-
-const MAX_POST_LENGTH = 5000;
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { postService } from '../services/postService';
+import { api } from '../services/api';
+import { useAuth } from '../hooks/useAuth'; // Import auth context
 
 function CreatePost() {
-	const [content, setContent] = useState("");
-	const [contentWarning, setContentWarning] = useState("");
-	const [showContentWarning, setShowContentWarning] = useState(false);
-	const [visibility, setVisibility] = useState(2);
-	const [localOnly, setLocalOnly] = useState(false);
-	const [includeLocation, setIncludeLocation] = useState(false);
-	const [showImageUpload, setShowImageUpload] = useState(false);
+  const navigate = useNavigate();
+  const { user: currentUser } = useAuth(); // Get current user from auth context
+  
+  console.log('CreatePost component - currentUser:', currentUser);
+  
+  // Form state
+  const [content, setContent] = useState('');
+  const [visibility, setVisibility] = useState('public'); // Default
+  const [userSettings, setUserSettings] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [useDefaultPrivacy, setUseDefaultPrivacy] = useState(true);
 
-	const { location, hasLocation } = useLocation();
-	const queryClient = useQueryClient();
-	const { error, handleError, clearError } = useErrorHandler();
-	const {
-		file: imageFile,
-		preview: imagePreview,
-		selectFile,
-		clearFile,
-	} = useFileUpload();
+  // Constants
+  const MAX_POST_LENGTH = 500;
+  const VISIBILITY_OPTIONS = [
+    { value: 'public', label: 'Public', icon: '🌎', description: 'Everyone can see this post' },
+    { value: 'followers', label: 'Followers', icon: '👥', description: 'Only your followers can see this post' },
+    { value: 'private', label: 'Private', icon: '🔒', description: 'Only you can see this post' }
+  ];
 
-	const createPostMutation = useMutation({
-		mutationFn: postService.createPost,
-		onSuccess: () => {
-			setContent("");
-			setContentWarning("");
-			setShowContentWarning(false);
-			clearFile();
-			setShowImageUpload(false);
-			queryClient.invalidateQueries(["posts"]);
-		},
-		onError: handleError,
-	});
+  // Load user settings
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        console.log('Loading user settings');
+        const settings = await api.getUserSettings();
+        console.log('User settings loaded:', settings);
+        setUserSettings(settings);
+        
+        // Apply default settings
+        if (settings.default_post_privacy && useDefaultPrivacy) {
+          console.log('Applying default privacy:', settings.default_post_privacy);
+          setVisibility(settings.default_post_privacy);
+        }
+      } catch (error) {
+        console.error('Failed to load user settings:', error);
+      }
+    };
+    
+    loadSettings();
+  }, []);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!content.trim()) {
+      setError('Post content cannot be empty');
+      return;
+    }
+    
+    if (content.length > MAX_POST_LENGTH) {
+      setError(`Post content cannot exceed ${MAX_POST_LENGTH} characters`);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Get location from user settings or current user
+      const location = userSettings?.location || currentUser?.location || { city: '', region: '' };
+      
+      console.log('Creating post with:', {
+        content,
+        visibility,
+        city: location.city,
+        region: location.region,
+        user: {
+          id: currentUser?.id,
+          username: currentUser?.username
+        }
+      });
+      
+      // IMPORTANT: Include the user info in the post data
+      const post = await postService.createPost({
+        content,
+        visibility,
+        city: location.city,
+        region: location.region,
+        // Ensure user info is passed
+        user: {
+          id: currentUser?.id,
+          username: currentUser?.username
+        }
+      });
+      
+      console.log('Created post:', post);
+      
+      // Redirect to home page
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to create post:', error);
+      setError('Failed to create post. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-		if (!content.trim()) {
-			handleError(new Error("Post content is required"));
-			return;
-		}
+  const remainingChars = MAX_POST_LENGTH - content.length;
+  const isOverLimit = remainingChars < 0;
 
-		if (content.length > MAX_POST_LENGTH) {
-			handleError(
-				new Error(`Post must be less than ${MAX_POST_LENGTH} characters`),
-			);
-			return;
-		}
-
-		const postData = {
-			content: content.trim(),
-			visibility,
-			local_only: localOnly,
-			...(showContentWarning &&
-				contentWarning && { content_warning: contentWarning }),
-			...(includeLocation &&
-				hasLocation && {
-				location: {
-					latitude: location.latitude,
-					longitude: location.longitude,
-				},
-			}),
-		};
-
-		createPostMutation.mutate(postData);
-	};
-
-	const selectedVisibility = VISIBILITY_OPTIONS.find(
-		(opt) => opt.value === visibility,
-	);
-	const remainingChars = MAX_POST_LENGTH - content.length;
-	const isOverLimit = remainingChars < 0;
-
-	return (
-		<div className="bg-white rounded-lg shadow-sm border p-6">
-			<ErrorAlert error={error} onClose={clearError} />
-
-			<form onSubmit={handleSubmit} className="space-y-4">
-				{/* Content Warning */}
-				{showContentWarning && (
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-1">
-							Content Warning
-						</label>
-						<input
-							type="text"
-							value={contentWarning}
-							onChange={(e) => setContentWarning(e.target.value)}
-							className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
-							placeholder="Warn others about sensitive content"
-							maxLength={200}
-						/>
-					</div>
-				)}
-
-				{/* Main Content */}
-				<div>
-					<textarea
-						value={content}
-						onChange={(e) => setContent(e.target.value)}
-						className={`w-full p-3 border rounded-md resize-none focus:ring-green-500 focus:border-green-500 ${isOverLimit ? "border-red-500" : ""
-							}`}
-						rows="4"
-						placeholder="What's happening in your neighborhood?"
-					/>
-					<div
-						className={`text-right text-sm mt-1 ${remainingChars < 100
-								? isOverLimit
-									? "text-red-600"
-									: "text-yellow-600"
-								: "text-gray-500"
-							}`}
-					>
-						{remainingChars < 100 && `${remainingChars} characters remaining`}
-					</div>
-				</div>
-
-				{/* Image Upload */}
-				{showImageUpload && (
-					<FileUpload onFileSelect={selectFile} maxSize={10 * 1024 * 1024} />
-				)}
-
-				{/* Options */}
-				<div className="space-y-3">
-					{/* Visibility */}
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Who can see this post?
-						</label>
-						<div className="grid grid-cols-2 gap-2">
-							{VISIBILITY_OPTIONS.map((option) => (
-								<button
-									key={option.value}
-									type="button"
-									onClick={() => setVisibility(option.value)}
-									className={`p-3 border rounded-md text-left transition-colors ${visibility === option.value
-											? "border-green-500 bg-green-50"
-											: "border-gray-200 hover:border-gray-300"
-										}`}
-								>
-									<div className="flex items-center space-x-2">
-										<option.icon className="w-4 h-4" />
-										<span className="font-medium">{option.label}</span>
-									</div>
-									<p className="text-xs text-gray-500 mt-1">
-										{option.description}
-									</p>
-								</button>
-							))}
-						</div>
-					</div>
-
-					{/* Additional Options */}
-					<div className="flex flex-wrap gap-4">
-						{hasLocation && (
-							<label className="flex items-center space-x-2">
-								<input
-									type="checkbox"
-									checked={includeLocation}
-									onChange={(e) => setIncludeLocation(e.target.checked)}
-									className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-								/>
-								<span className="text-sm text-gray-700">
-									Include approximate location
-								</span>
-							</label>
-						)}
-
-						<label className="flex items-center space-x-2">
-							<input
-								type="checkbox"
-								checked={localOnly}
-								onChange={(e) => setLocalOnly(e.target.checked)}
-								className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-							/>
-							<span className="text-sm text-gray-700">
-								Keep on this instance only
-							</span>
-						</label>
-					</div>
-
-					{/* Action Buttons */}
-					<div className="flex items-center space-x-2">
-						<button
-							type="button"
-							onClick={() => setShowImageUpload(!showImageUpload)}
-							className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
-						>
-							<Image className="w-4 h-4" />
-							<span>Image</span>
-						</button>
-
-						<button
-							type="button"
-							onClick={() => setShowContentWarning(!showContentWarning)}
-							className="flex items-center space-x-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
-						>
-							<AlertTriangle className="w-4 h-4" />
-							<span>Content Warning</span>
-						</button>
-					</div>
-				</div>
-
-				{/* Submit */}
-				<div className="flex justify-between items-center pt-4 border-t">
-					<div className="flex items-center space-x-2 text-sm text-gray-500">
-						<selectedVisibility.icon className="w-4 h-4" />
-						<span>{selectedVisibility.label}</span>
-						{localOnly && <span>• Local Only</span>}
-						{includeLocation && <span>• Location</span>}
-					</div>
-
-					<button
-						type="submit"
-						disabled={
-							!content.trim() || isOverLimit || createPostMutation.isPending
-						}
-						className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{createPostMutation.isPending ? "Posting..." : "Post"}
-					</button>
-				</div>
-			</form>
-		</div>
-	);
+  return (
+    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto my-6">
+      <h1 className="text-xl font-bold mb-4 text-burgundy">Create Post</h1>
+      
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <div className="ml-auto">
+              <button onClick={() => setError('')} className="text-red-400 hover:text-red-500">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit}>
+        {/* Post content */}
+        <div className="mb-4">
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What's on your mind?"
+            className={`w-full p-3 border rounded-md resize-none focus:outline-none focus:ring-1 ${
+              isOverLimit ? "border-red-500 focus:ring-red-500" : "focus:ring-lime border-gray-300"
+            }`}
+            rows="4"
+          />
+          <div className={`text-right text-sm mt-1 ${
+            remainingChars < 50
+              ? isOverLimit
+                ? "text-red-600"
+                : "text-yellow-600"
+              : "text-gray-500"
+          }`}>
+            {remainingChars} characters remaining
+          </div>
+        </div>
+        
+        {/* Location information display */}
+        {(userSettings?.location || currentUser?.location) && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-md">
+            <div className="flex items-center text-sm text-gray-600">
+              <svg className="h-5 w-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>
+                Your post will include your location: 
+                <span className="font-medium ml-1">
+                  {userSettings?.location?.city || currentUser?.location?.city || ''}
+                  {(userSettings?.location?.city || currentUser?.location?.city) && 
+                   (userSettings?.location?.region || currentUser?.location?.region) ? ', ' : ''}
+                  {userSettings?.location?.region || currentUser?.location?.region || ''}
+                </span>
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 ml-7">
+              You can change your location in <button 
+                type="button" 
+                onClick={() => navigate('/settings')}
+                className="text-indigo-600 hover:text-indigo-800"
+              >
+                Settings
+              </button>
+            </p>
+          </div>
+        )}
+        
+        {/* Visibility */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700">Who can see this post?</label>
+            {userSettings?.default_post_privacy && (
+              <label className="flex items-center text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={useDefaultPrivacy}
+                  onChange={(e) => {
+                    setUseDefaultPrivacy(e.target.checked);
+                    if (e.target.checked && userSettings.default_post_privacy) {
+                      setVisibility(userSettings.default_post_privacy);
+                    }
+                  }}
+                  className="mr-2 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Use default privacy ({userSettings.default_post_privacy})
+              </label>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            {VISIBILITY_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setVisibility(option.value)}
+                className={`p-3 border rounded-md text-left transition-colors ${
+                  visibility === option.value
+                    ? "border-lime bg-green-50"
+                    : "border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-xl">{option.icon}</span>
+                  <span className="font-medium">{option.label}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Submit button */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={!content.trim() || isOverLimit || loading}
+            className="px-4 py-2 bg-lime text-white rounded-md hover:bg-olive focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime disabled:opacity-50"
+          >
+            {loading ? "Posting..." : "Post"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 export default CreatePost;
