@@ -18,9 +18,9 @@ COPY requirements/ requirements/
 RUN pip install --no-cache-dir -r requirements/production.txt
 
 # Copy application
-COPY backend/ ./backend/
+COPY . .
 
-WORKDIR /app/backend
+WORKDIR /app
 
 # Create logs directory
 RUN mkdir -p logs
