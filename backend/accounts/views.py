@@ -1,6 +1,8 @@
 # backend/accounts/views.py
 import logging
+import smtplib
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
@@ -13,6 +15,7 @@ from .serializers import (
     UserRegistrationSerializer,
     UserSerializer,
 )
+from .throttles import RegistrationRateThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
@@ -26,6 +29,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegistrationRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
