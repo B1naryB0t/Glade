@@ -40,6 +40,7 @@ services:
     environment:
       DATABASE_URL: postgresql://glade:glade_dev_password@postgres:5432/glade
       REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
       SECRET_KEY: demo-secret-key-change-in-production
       DEBUG: "True"
       INSTANCE_DOMAIN: localhost:8000
@@ -69,13 +70,19 @@ services:
       dockerfile: ../infrastructure/docker/Dockerfile.backend
     environment:
       DATABASE_URL: postgresql://glade:glade_dev_password@postgres:5432/glade
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+      SECRET_KEY: demo-secret-key-change-in-production
+      DEBUG: "True"
+      INSTANCE_DOMAIN: localhost:8000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A glade worker --loglevel=info
+    volumes:
+      - ../../backend:/app/backend
+    command: celery -A glade.celery_app worker --loglevel=info
 
 volumes:
   postgres_data:
