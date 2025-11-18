@@ -6,8 +6,8 @@ from . import views
 urlpatterns = [
     # Well-known endpoints
     path(".well-known/webfinger", views.webfinger, name="webfinger"),
-    path(".well-known/nodeinfo", views.nodeinfo_discovery, name="nodeinfo_discovery"),
-    path("nodeinfo/2.0", views.nodeinfo, name="nodeinfo"),
+    path(".well-known/nodeinfo", views.node_info_discovery, name="node_info_discovery"),
+    path("nodeinfo/2.0", views.node_info, name="node_info"),
     # ActivityPub endpoints
     path("users/<str:username>", views.actor_view, name="actor"),
     path("users/<str:username>/inbox", views.inbox_view, name="user_inbox"),

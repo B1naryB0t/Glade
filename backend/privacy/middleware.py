@@ -27,7 +27,8 @@ class PrivacyMiddleware:
 
         return response
 
-    def _check_rate_limit(self, request):
+    @staticmethod
+    def _check_rate_limit(request):
         """Simple rate limiting"""
         if settings.DEBUG:
             return True

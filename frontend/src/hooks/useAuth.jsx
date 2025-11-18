@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
-      setToken(data.access_token)
+      setToken(data.token)
       queryClient.invalidateQueries(['currentUser'])
     }
   })
@@ -54,6 +54,12 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setToken(null)
     queryClient.clear()
+  }
+
+  // Delete Account
+  const deleteAccount = async () => {
+    await authService.deleteAccount();
+    logout()
   }
 
   const value = {

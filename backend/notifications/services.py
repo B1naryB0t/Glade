@@ -108,6 +108,26 @@ class NotificationService:
         )
 
     @staticmethod
+    def notify_follow_request(followed_user, follower):
+        """Notify user about a follow request"""
+        return NotificationService.create_notification(
+            recipient=followed_user,
+            actor=follower,
+            notification_type="follow_request",
+            message=f"{follower.display_name or follower.username} requested to follow you",
+        )
+
+    @staticmethod
+    def notify_follow_accepted(follower, followed_user):
+        """Notify user that their follow request was accepted"""
+        return NotificationService.create_notification(
+            recipient=follower,
+            actor=followed_user,
+            notification_type="follow",
+            message=f"{followed_user.display_name or followed_user.username} accepted your follow request",
+        )
+
+    @staticmethod
     def mark_all_read(user):
         """Mark all notifications as read for a user"""
         Notification.objects.filter(recipient=user, read=False).update(read=True)

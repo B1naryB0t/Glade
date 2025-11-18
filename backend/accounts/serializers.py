@@ -20,6 +20,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Passwords don't match")
         return attrs
 
+    def validate_username(self, value):
+        """Validate and sanitize username"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_username(value)
+
     def create(self, validated_data):
         validated_data.pop("password_confirm")
         user = User.objects.create_user(**validated_data)
@@ -48,13 +53,16 @@ class UserSerializer(serializers.ModelSerializer):
             "posts_count",
         ]
 
-    def get_followers_count(self, obj):
+    @staticmethod
+    def get_followers_count(obj):
         return obj.followers.filter(accepted=True).count()
 
-    def get_following_count(self, obj):
+    @staticmethod
+    def get_following_count(obj):
         return obj.following.filter(accepted=True).count()
 
-    def get_posts_count(self, obj):
+    @staticmethod
+    def get_posts_count(obj):
         return obj.posts.filter(visibility__in=[1, 2]).count()
 
 
@@ -64,6 +72,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     avatar_url = serializers.ReadOnlyField()
     is_following = serializers.SerializerMethodField()
     is_follower = serializers.SerializerMethodField()
+    follow_requested = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -79,6 +90,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "is_following",
             "is_follower",
+            "follow_requested",
+            "followers_count",
+            "following_count",
         ]
         read_only_fields = ["id", "username", "created_at"]
 
@@ -93,3 +107,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.following.filter(following=request.user, accepted=True).exists()
         return False
+
+    def get_follow_requested(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.followers.filter(follower=request.user, accepted=False).exists()
+        return False
+
+    def get_followers_count(self, obj):
+        return obj.followers.filter(accepted=True).count()
+
+    def get_following_count(self, obj):
+        return obj.following.filter(accepted=True).count()
+
+    def validate_display_name(self, value):
+        """Validate and sanitize display name"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_display_name(value)
+
+    def validate_bio(self, value):
+        """Validate and sanitize bio"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_bio(value)

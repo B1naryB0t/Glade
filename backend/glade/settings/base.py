@@ -95,7 +95,7 @@ else:
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": config("REDIS_URL", default="redis://127.0.0.1:6379/1"),
+        "LOCATION": config("REDIS_CACHE_URL", default="redis://127.0.0.1:6379/1"),
     }
 }
 
@@ -128,6 +128,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "accounts.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 # Celery
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")

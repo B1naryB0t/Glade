@@ -1,8 +1,8 @@
 # backend/posts/serializers.py
 from accounts.serializers import UserSerializer
 from django.contrib.gis.geos import Point
-from .models import Post
-from backend.privacy.services import PrivacyService
+from .models import Post, Comment
+from privacy.services import PrivacyService
 from rest_framework import serializers
 
 
@@ -14,6 +14,11 @@ class PostCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ["content", "content_warning", "visibility", "local_only", "location"]
+
+    def validate_content(self, value):
+        """Validate and sanitize post content"""
+        from services.validation_service import InputValidationService
+        return InputValidationService.validate_post_content(value)
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -68,10 +73,12 @@ class PostSerializer(serializers.ModelSerializer):
             "is_liked",
         ]
 
-    def get_likes_count(self, obj):
+    @staticmethod
+    def get_likes_count(obj):
         return obj.likes.count()
 
-    def get_replies_count(self, obj):
+    @staticmethod
+    def get_replies_count(obj):
         return obj.replies.count()
 
     def get_is_liked(self, obj):
@@ -80,9 +87,21 @@ class PostSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
-    def get_location_name(self, obj):
+    @staticmethod
+    def get_location_name(obj):
         if obj.location:
             # This would integrate with a geocoding service
             # For now, return generic location
             return "Nearby"
         return None
+
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Comment serializer"""
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ["id", "post", "author", "content", "created_at"]
+        read_only_fields = ["id", "post", "author", "created_at"]

@@ -18,4 +18,8 @@ urlpatterns = [
     ),
     path("profile/<str:username>/avatar/", views.upload_avatar, name="upload-avatar"),
     path("follow/<str:username>/", views.follow_user, name="follow-user"),
+    path("search/", views.search_users, name="search-users"),
+    path("follow-requests/", views.follow_requests, name="follow-requests"),
+    path("follow-requests/<uuid:follow_id>/accept/", views.accept_follow_request, name="accept-follow-request"),
+    path("follow-requests/<uuid:follow_id>/reject/", views.reject_follow_request, name="reject-follow-request"),
 ]

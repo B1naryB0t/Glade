@@ -1,0 +1,30 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    libgdal-dev \
+    binutils \
+    libproj-dev \
+    gdal-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements/ requirements/
+RUN pip install --no-cache-dir -r requirements/production.txt
+
+# Copy application
+COPY . .
+
+WORKDIR /app
+
+# Create logs directory
+RUN mkdir -p logs
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "glade.wsgi:application"]
