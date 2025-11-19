@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
-import PostCard from '../components/posts/PostCard'; // Make sure this is updated to the integrated version
+import PostCard from '../components/posts/PostCard';
 
 function ProfilePage() {
-  const { userId } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   
@@ -14,30 +14,29 @@ function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // This is very important - log everything to debug
-  console.log('ProfilePage rendering with userId:', userId);
+  console.log('ProfilePage rendering with username:', username);
   console.log('Current user:', currentUser);
 
   useEffect(() => {
     loadProfile();
-  }, [userId]);
+  }, [username]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      console.log('Loading profile for userId:', userId);
+      console.log('Loading profile for username:', username);
       
-      // Determine which ID to use
-      const profileId = userId === 'me' ? currentUser?.id || '1' : userId;
-      console.log('Using profile ID:', profileId);
+      // Determine which username to use
+      const profileUsername = username === 'me' ? currentUser?.username : username;
+      console.log('Using profile username:', profileUsername);
       
       // Load user profile
-      const userData = await api.getUserProfile(profileId);
+      const userData = await api.getUserProfile(profileUsername);
       console.log('Profile data loaded:', userData);
       setProfileUser(userData);
       
       // Load user's posts
-      const postsData = await api.getUserPosts(profileId);
+      const postsData = await api.getUserPosts(profileUsername);
       console.log('User posts loaded:', postsData);
       setPosts(postsData.results || []);
       
@@ -52,9 +51,9 @@ function ProfilePage() {
 
   // Check if this is the current user's profile
   const isOwnProfile = currentUser && (
-    userId === 'me' || 
-    userId === currentUser.id.toString() || 
-    (profileUser && profileUser.id === currentUser.id)
+    username === 'me' || 
+    username === currentUser.username || 
+    (profileUser && profileUser.username === currentUser.username)
   );
 
   if (loading) {
@@ -149,18 +148,27 @@ function ProfilePage() {
           {!isOwnProfile && (
             <button 
               className={`px-4 py-2 rounded-md ${
-                profileUser.is_followed 
+                profileUser.is_following 
                   ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
+                  : profileUser.follow_requested
+                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              onClick={() => {
-                setProfileUser({
-                  ...profileUser,
-                  is_followed: !profileUser.is_followed
-                });
+              onClick={async () => {
+                try {
+                  if (profileUser.is_following || profileUser.follow_requested) {
+                    await api.unfollowUser(username);
+                  } else {
+                    await api.followUser(username);
+                  }
+                  // Reload profile to get updated counts
+                  await loadProfile();
+                } catch (error) {
+                  console.error('Error toggling follow:', error);
+                }
               }}
             >
-              {profileUser.is_followed ? 'Unfollow' : 'Follow'}
+              {profileUser.is_following ? 'Unfollow' : profileUser.follow_requested ? 'Requested' : 'Follow'}
             </button>
           )}
         </div>

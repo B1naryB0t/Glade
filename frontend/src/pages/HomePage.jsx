@@ -8,7 +8,7 @@ function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load posts from the mock API
+  // Load posts from the API
   useEffect(() => {
     const loadPosts = async () => {
       try {

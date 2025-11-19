@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { api } from '../../services/api';
+import { postService } from '../../services/postService';
 
 function PostForm({ onPostCreated }) {
   const [content, setContent] = useState('');
@@ -12,17 +12,19 @@ function PostForm({ onPostCreated }) {
     try {
       setIsPosting(true);
 
-      // Create the post using the mock API
-      const newPost = await api.createPost({
-        content,
-      });
+      const postData = {
+        content: content.trim(),
+        visibility: 'public',
+        local_only: false
+      };
 
-      // Send the REAL post object to HomePage
+      console.log('Creating post:', postData);
+      const newPost = await postService.createPost(postData);
+
       if (onPostCreated) {
         onPostCreated(newPost);
       }
 
-      // Clear the form
       setContent('');
     } catch (error) {
       console.error("Error creating post:", error);

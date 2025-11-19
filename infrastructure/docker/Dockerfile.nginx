@@ -1,8 +1,10 @@
 FROM node:18-alpine AS builder
 
 WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm ci
+COPY frontend/package.json ./
+
+# Install without using package-lock.json (it's corrupted)
+RUN npm install --legacy-peer-deps
 
 COPY frontend/ .
 RUN npm run build

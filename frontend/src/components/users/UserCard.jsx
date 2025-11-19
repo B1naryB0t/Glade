@@ -6,7 +6,7 @@ function UserCard({ user, showFollowButton = true }) {
   const navigate = useNavigate();
 
   const handleProfileClick = () => {
-    navigate(`/profile/${user.id}`);
+    navigate(`/profile/${user.username}`);
   };
 
   return (
