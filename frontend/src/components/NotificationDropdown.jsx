@@ -2,7 +2,7 @@
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageCircle, UserPlus, Settings } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Settings, Bell } from "lucide-react";
 import { notificationService } from "../services/notificationService";
 import { Link } from "react-router-dom";
 

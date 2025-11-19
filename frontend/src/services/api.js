@@ -28,7 +28,7 @@ export const api = {
   },
 
   async searchUsers(query) {
-    const response = await apiClient.get('/auth/search/users/', {
+    const response = await apiClient.get('/auth/search/', {
       params: { q: query }
     });
     return response.data;
