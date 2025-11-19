@@ -109,6 +109,11 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_RATES": {
+        "registration": "2/hour",  # 2 registrations per hour per IP
+        "anon": "100/hour",  # General anonymous rate limit
+        "user": "1000/hour",  # General authenticated user rate limit
+    },
 }
 
 # Internationalization
