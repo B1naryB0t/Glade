@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import PostCard from '../components/posts/PostCard'; // Make sure this is updated to the integrated version
 
 function ProfilePage() {
-  const { userId } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   
@@ -14,30 +14,29 @@ function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // This is very important - log everything to debug
-  console.log('ProfilePage rendering with userId:', userId);
+  console.log('ProfilePage rendering with username:', username);
   console.log('Current user:', currentUser);
 
   useEffect(() => {
     loadProfile();
-  }, [userId]);
+  }, [username]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      console.log('Loading profile for userId:', userId);
+      console.log('Loading profile for username:', username);
       
-      // Determine which ID to use
-      const profileId = userId === 'me' ? currentUser?.id || '1' : userId;
-      console.log('Using profile ID:', profileId);
+      // Determine which username to use
+      const profileUsername = username === 'me' ? currentUser?.username : username;
+      console.log('Using profile username:', profileUsername);
       
       // Load user profile
-      const userData = await api.getUserProfile(profileId);
+      const userData = await api.getUserProfile(profileUsername);
       console.log('Profile data loaded:', userData);
       setProfileUser(userData);
       
       // Load user's posts
-      const postsData = await api.getUserPosts(profileId);
+      const postsData = await api.getUserPosts(profileUsername);
       console.log('User posts loaded:', postsData);
       setPosts(postsData.results || []);
       
@@ -52,9 +51,9 @@ function ProfilePage() {
 
   // Check if this is the current user's profile
   const isOwnProfile = currentUser && (
-    userId === 'me' || 
-    userId === currentUser.id.toString() || 
-    (profileUser && profileUser.id === currentUser.id)
+    username === 'me' || 
+    username === currentUser.username || 
+    (profileUser && profileUser.username === currentUser.username)
   );
 
   if (loading) {

@@ -14,7 +14,7 @@ function Layout({ children }) {
 
   const handleProfileClick = () => {
     if (user) {
-      navigate(`/profile/${user.id}`);
+      navigate(`/profile/${user.username}`);
     }
   };
 

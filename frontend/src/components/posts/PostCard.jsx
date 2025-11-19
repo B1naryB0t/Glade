@@ -114,8 +114,8 @@ function PostCard({ post }) {
     }
   };
 
-  const username = post.user?.username || 'Unknown';
-  const userId = post.user?.id || 'unknown';
+  const username = post.author?.username || post.user?.username || 'Unknown';
+  const userId = post.author?.id || post.user?.id || 'unknown';
   const userInitial = (username[0] || 'U').toUpperCase();
 
   return (
@@ -123,7 +123,7 @@ function PostCard({ post }) {
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <Link to={`/profile/${userId}`} className="flex items-center">
+        <Link to={`/profile/${username}`} className="flex items-center">
           <div className="w-10 h-10 bg-olive rounded-full flex items-center justify-center">
             <span className="text-white font-semibold">{userInitial}</span>
           </div>
@@ -199,7 +199,7 @@ function PostCard({ post }) {
               {comments.map(comment => (
                 <div key={comment.id} className="p-3 bg-cream rounded-lg">
                   <div className="flex items-center mb-2">
-                    <Link to={`/profile/${comment.user?.id || 'unknown'}`} className="flex items-center">
+                    <Link to={`/profile/${comment.user?.username || 'unknown'}`} className="flex items-center">
                       <div className="w-8 h-8 bg-olive rounded-full flex items-center justify-center mr-2">
                         <span className="text-white text-sm">
                           {(comment.user?.username?.[0] || 'U').toUpperCase()}
