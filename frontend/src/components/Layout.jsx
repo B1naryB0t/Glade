@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
+import NotificationBell from './NotificationBell';
 
 function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -44,6 +45,7 @@ function Layout({ children }) {
             <div className="flex items-center space-x-4">
               {user && (
                 <>
+                  <NotificationBell />
                   <span className="text-sm text-burgundy font-medium hidden sm:block">
                     Hey, {user.username}!
                   </span>
