@@ -1,7 +1,10 @@
 # backend/accounts/views.py
 import logging
+import smtplib
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
+from django.db import models
 from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
@@ -320,7 +323,7 @@ def search_users(request):
         privacy_level=1  # Only public profiles are searchable
     ).exclude(id=request.user.id)[:20]  # Limit to 20 results
     
-    visible_users = li
+    visible_users = []
     for user in users:
         # Check if user's privacy allows being found in search
         # For now, all users are searchable, but you can add privacy checks here

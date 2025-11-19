@@ -108,42 +108,7 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
-        migrations.CreateModel(
-            name="Comment",
-            fields=[
-                (
-                    "id",
-                    models.UUIDField(
-                        default=uuid.uuid4,
-                        editable=False,
-                        primary_key=True,
-                        serialize=False,
-                    ),
-                ),
-                ("content", models.TextField(max_length=500)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
-                (
-                    "author",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="comments",
-                        to=settings.AUTH_USER_MODEL,
-                    ),
-                ),
-                (
-                    "post",
-                    models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE,
-                        related_name="comments",
-                        to="posts.post",
-                    ),
-                ),
-            ],
-            options={
-                "ordering": ["-created_at"],
-            },
-        ),
+
         migrations.AddIndex(
             model_name="post",
             index=models.Index(
