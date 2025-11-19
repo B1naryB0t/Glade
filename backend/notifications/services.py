@@ -71,7 +71,11 @@ class NotificationService:
 
         # Send email if preferences allow
         if NotificationService.should_email(recipient, notification_type):
-            send_notification_email.delay(str(notification.id))
+            try:
+                send_notification_email.delay(str(notification.id))
+            except Exception as e:
+                # Celery not available, skip email
+                print(f"Failed to queue email notification: {e}")
 
         return notification
 
