@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
-import PostCard from '../components/posts/PostCard'; // Make sure this is updated to the integrated version
+import PostCard from '../components/posts/PostCard';
 
 function ProfilePage() {
   const { username } = useParams();
@@ -148,18 +148,27 @@ function ProfilePage() {
           {!isOwnProfile && (
             <button 
               className={`px-4 py-2 rounded-md ${
-                profileUser.is_followed 
+                profileUser.is_following 
                   ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
+                  : profileUser.follow_requested
+                  ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              onClick={() => {
-                setProfileUser({
-                  ...profileUser,
-                  is_followed: !profileUser.is_followed
-                });
+              onClick={async () => {
+                try {
+                  if (profileUser.is_following || profileUser.follow_requested) {
+                    await api.unfollowUser(username);
+                  } else {
+                    await api.followUser(username);
+                  }
+                  // Reload profile to get updated counts
+                  await loadProfile();
+                } catch (error) {
+                  console.error('Error toggling follow:', error);
+                }
               }}
             >
-              {profileUser.is_followed ? 'Unfollow' : 'Follow'}
+              {profileUser.is_following ? 'Unfollow' : profileUser.follow_requested ? 'Requested' : 'Follow'}
             </button>
           )}
         </div>
