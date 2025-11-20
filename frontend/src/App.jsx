@@ -1,48 +1,40 @@
 // frontend/src/App.jsx
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "./hooks/useAuth";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider } from "./hooks/useAuth";
 import Layout from "./components/Layout";
+
+// Pages
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
-import Loading from "./components/common/Loading";
-import "./index.css";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 
-// Protected Route wrapper component
+// Protected Route Component
 function ProtectedRoute({ children }) {
-  const { user, isLoading } = useAuth();
+  const token = localStorage.getItem("authToken");
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading />
-      </div>
-    );
-  }
-
-  if (!user) {
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
   return children;
 }
 
-// Public Route wrapper (redirects to home if already logged in)
+// Public Route Component (redirect if already logged in)
 function PublicRoute({ children }) {
-  const { user, isLoading } = useAuth();
+  const token = localStorage.getItem("authToken");
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loading />
-      </div>
-    );
-  }
-
-  if (user) {
+  if (token) {
     return <Navigate to="/" replace />;
   }
 
@@ -51,62 +43,52 @@ function PublicRoute({ children }) {
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Routes>
-        {/* Public routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <RegisterPage />
-            </PublicRoute>
-          }
-        />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            }
+          />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Protected routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <HomePage />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile/:username"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <ProfilePage />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <SettingsPage />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+          {/* Protected routes with layout */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<HomePage />} />
+            <Route path="profile/:username" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route
+              path="notifications/settings"
+              element={<NotificationSettingsPage />}
+            />
+          </Route>
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
