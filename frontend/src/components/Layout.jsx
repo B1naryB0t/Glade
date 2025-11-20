@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
@@ -73,7 +73,7 @@ function Layout({ children }) {
           </div>
         </div>
       </nav>
-      <main>{children}</main>
+      <main><Outlet /></main>
     </div>
   );
 }

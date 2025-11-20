@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { userService } from '../../services/userService';
 
 function FollowButton({ userId, username, initialFollowing = false }) {
   const { user } = useAuth();
@@ -15,13 +16,13 @@ function FollowButton({ userId, username, initialFollowing = false }) {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with actual API call
-      console.log(`${isFollowing ? 'Unfollowing' : 'Following'} user ${userId}`);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setIsFollowing(!isFollowing);
+      if (isFollowing) {
+        await userService.unfollowUser(username);
+        setIsFollowing(false);
+      } else {
+        await userService.followUser(username);
+        setIsFollowing(true);
+      }
     } catch (error) {
       console.error('Follow action failed:', error);
     } finally {
