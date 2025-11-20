@@ -14,6 +14,13 @@ function RegisterPage() {
 
   const { register } = useAuth();
 
+  const inputTypes = {
+    username: "text",
+    email: "email",
+    password: "password",
+    confirmPassword: "password",
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (errors[e.target.name]) {
@@ -116,8 +123,12 @@ function RegisterPage() {
                     <input
                       id={field}
                       name={field}
-                      type={field.includes("password") ? "password" : "text"}
-                      autoComplete={field}
+                      type={inputTypes[field]}
+                      autoComplete={
+                        field === "password" || field === "confirmPassword"
+                          ? "new-password"
+                          : field
+                      }
                       required
                       value={formData[field]}
                       onChange={handleChange}
