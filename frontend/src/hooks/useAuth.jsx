@@ -8,12 +8,17 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("authToken"));
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
   const queryClient = useQueryClient();
 
   // Set axios default header when token changes
   useEffect(() => {
     if (token) {
-      apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      // Use 'Token' format (DRF Token Authentication), not 'Bearer'
+      apiClient.defaults.headers.common["Authorization"] = `Token ${token}`;
       localStorage.setItem("authToken", token);
     } else {
       delete apiClient.defaults.headers.common["Authorization"];
@@ -22,53 +27,77 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
-  // Fetch current user
-  const { data: user, isLoading } = useQuery({
-    queryKey: ["currentUser"],
-    queryFn: authService.getCurrentUser,
-    enabled: !!token,
-    retry: false,
-    onError: () => {
-      setToken(null);
-    },
-  });
-
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: ({ email, password }) => authService.login({ email, password }),
     onSuccess: (data) => {
-      const authToken = data.token || data.access_token;
-      setToken(authToken);
+      console.log("useAuth: Login success, data:", data);
 
-      // Store user data
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
+      const authToken = data.token;
+      const userData = data.user;
+
+      console.log("useAuth: Extracted token:", authToken);
+      console.log("useAuth: Extracted user:", userData);
+
+      if (authToken && userData) {
+        // Set token in headers FIRST
+        apiClient.defaults.headers.common["Authorization"] =
+          `Token ${authToken}`;
+        console.log("useAuth: Set Authorization header");
+
+        // Update state
+        setToken(authToken);
+        setUser(userData);
+        console.log("useAuth: Updated state - token and user set");
+
+        queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      } else {
+        console.error("useAuth: Login failed - missing token or user", {
+          authToken,
+          userData,
+        });
+        throw new Error("Missing token or user in response");
       }
-
-      queryClient.invalidateQueries(["currentUser"]);
+    },
+    onError: (error) => {
+      console.error("useAuth: Login mutation error:", error);
     },
   });
 
   // Register mutation
   const registerMutation = useMutation({
-    mutationFn: ({ username, email, password }) =>
-      authService.register({ username, email, password }),
+    mutationFn: ({ username, email, password, confirmPassword }) =>
+      authService.register({ username, email, password, confirmPassword }),
     onSuccess: (data) => {
-      const authToken = data.token || data.access_token;
-      setToken(authToken);
+      console.log("useAuth: Register success", data);
 
-      // Store user data
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.success) {
+        const authToken = data.data.token || data.data.access_token;
+
+        if (authToken && data.data.user) {
+          setToken(authToken);
+          setUser(data.data.user);
+          localStorage.setItem("authToken", authToken);
+          localStorage.setItem("user", JSON.stringify(data.data.user));
+
+          // Set the token in axios headers immediately
+          apiClient.defaults.headers.common["Authorization"] =
+            `Token ${authToken}`;
+
+          queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+        }
       }
-
-      queryClient.invalidateQueries(["currentUser"]);
+    },
+    onError: (error) => {
+      console.error("useAuth: Register failed", error);
     },
   });
 
   // Logout
   const logout = () => {
+    console.log("useAuth: Logging out");
     setToken(null);
+    setUser(null);
     queryClient.clear();
   };
 
@@ -80,23 +109,23 @@ export function AuthProvider({ children }) {
 
   // Update user data
   const updateUser = (userData) => {
-    queryClient.setQueryData(["currentUser"], (oldData) => {
-      const updatedUser = { ...oldData, ...userData };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      return updatedUser;
-    });
+    console.log("useAuth: Updating user", userData);
+    const updatedUser = { ...user, ...userData };
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    queryClient.setQueryData(["currentUser"], updatedUser);
   };
 
   const value = {
     user,
-    isLoading:
-      isLoading || loginMutation.isPending || registerMutation.isPending,
+    isLoading: loginMutation.isPending || registerMutation.isPending,
     isAuthenticated: !!token && !!user,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout,
     deleteAccount,
     updateUser,
+    error: loginMutation.error || registerMutation.error,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,8 +1,11 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 function RegisterPage() {
+  const navigate = useNavigate();
+  const { register, isLoading, user, error } = useAuth();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -10,9 +13,13 @@ function RegisterPage() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
 
-  const { register } = useAuth();
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const inputTypes = {
     username: "text",
@@ -49,20 +56,34 @@ function RegisterPage() {
       setErrors(newErrors);
       return;
     }
-    setIsLoading(true);
+
     setErrors({});
+
     try {
+      console.log("RegisterPage: Attempting registration with:", {
+        username: formData.username,
+        email: formData.email,
+      });
+
       const result = await register({
         username: formData.username,
         email: formData.email,
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
       });
-      if (!result.success)
-        setErrors({ submit: result.error || "Registration failed" });
-    } catch {
-      setErrors({ submit: "An unexpected error occurred" });
-    } finally {
-      setIsLoading(false);
+
+      console.log("RegisterPage: Registration result", result);
+
+      // Registration successful - user state will update and useEffect will redirect
+      // Or show success message
+      if (result.success) {
+        // Navigation will happen via useEffect when user is set
+      }
+    } catch (error) {
+      console.error("RegisterPage: Registration error:", error);
+      setErrors({
+        submit: error.message || "An unexpected error occurred",
+      });
     }
   };
 
@@ -107,6 +128,17 @@ function RegisterPage() {
               </div>
             )}
 
+            {error && (
+              <div
+                className="rounded-md p-4"
+                style={{ backgroundColor: "#7A3644" }}
+              >
+                <div className="text-sm" style={{ color: "#FFE3AB" }}>
+                  {error.message || "An error occurred"}
+                </div>
+              </div>
+            )}
+
             {["username", "email", "password", "confirmPassword"].map(
               (field) => (
                 <div key={field}>
@@ -132,11 +164,13 @@ function RegisterPage() {
                       required
                       value={formData[field]}
                       onChange={handleChange}
+                      disabled={isLoading}
                       className="appearance-none block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm"
                       style={{
                         borderColor: errors[field] ? "#7A3644" : "#B8CC42",
                         backgroundColor: "#FFE3AB",
                         color: "#7A3644",
+                        opacity: isLoading ? 0.6 : 1,
                       }}
                     />
                     {errors[field] && (
