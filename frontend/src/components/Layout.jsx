@@ -3,6 +3,7 @@ import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
+import FollowRequestsBadge from './FollowRequestsBadge';
 
 function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -42,10 +43,11 @@ function Layout({ children }) {
 
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
               {user && (
                 <>
                   <NotificationBell />
+                  <FollowRequestsBadge />
                   <span className="text-sm text-burgundy font-medium hidden sm:block">
                     Hey, {user.username}!
                   </span>
