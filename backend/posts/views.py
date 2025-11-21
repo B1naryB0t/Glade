@@ -2,6 +2,8 @@
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
+from accounts.models import User
 from federation.tasks import federate_post
 from .models import Comment, Like, Post
 from notifications.services import NotificationService
@@ -185,3 +187,21 @@ def post_comments(request, post_id):
             serializer.save(author=request.user, post=post)
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
+
+
+class UserPostsView(generics.ListAPIView):
+    """Get posts by a specific user"""
+    
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        username = self.kwargs.get('username')
+        user = get_object_or_404(User, username=username)
+        
+        # Get posts by this user
+        return Post.objects.filter(
+            author=user,
+            visibility=1  # Only public posts for now
+        ).select_related('author').prefetch_related('likes').order_by('-created_at')

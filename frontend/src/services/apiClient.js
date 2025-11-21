@@ -1,40 +1,59 @@
 // frontend/src/services/apiClient.js
-import axios from 'axios'
+import axios from "axios";
 
-// In production, use relative path so it works with nginx proxy
-// In development, use localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+// Create axios instance with default config
+const API_BASE_URL =
+	import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 10000,
-})
+	baseURL: API_BASE_URL,
+	headers: {
+		"Content-Type": "application/json",
+	},
+	timeout: 10000, // 10 second timeout
+});
 
-// Request interceptor for auth token
+// Request interceptor - add auth token
 apiClient.interceptors.request.use(
-  (config) => {
-    console.log('🚀 API Request:', config.method?.toUpperCase(), config.baseURL + config.url)
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Token ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
+	(config) => {
+		console.log(
+			"API Request:",
+			config.method?.toUpperCase(),
+			config.baseURL + config.url,
+		);
+		const token = localStorage.getItem("authToken");
+		if (token) {
+			config.headers.Authorization = `Token ${token}`;
+		}
+		return config;
+	},
+	(error) => {
+		return Promise.reject(error);
+	},
+);
 
-// Response interceptor for error handling
+// Response interceptor - handle errors
 apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
+	(response) => response,
+	(error) => {
+		// Handle 401 Unauthorized
+		if (error.response?.status === 401) {
+			// Clear auth data
+			localStorage.removeItem("authToken");
+			localStorage.removeItem("user");
+
+			// Redirect to login if not already there
+			if (!window.location.pathname.includes("/login")) {
+				window.location.href = "/login";
+			}
+		}
+
+		// Handle network errors
+		if (!error.response) {
+			console.error("Network error:", error);
+			error.message = "Network error. Please check your connection.";
+		}
+
+		return Promise.reject(error);
+	},
+);
