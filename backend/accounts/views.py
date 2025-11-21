@@ -395,3 +395,46 @@ def reject_follow_request(request, follow_id):
         return Response({"message": "Follow request rejected"}, status=200)
     except Follow.DoesNotExist:
         return Response({"error": "Follow request not found"}, status=404)
+
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([permissions.IsAuthenticated])
+def user_settings(request):
+    """Get or update user settings"""
+    user = request.user
+    
+    if request.method == "GET":
+        # Return user settings mapped to frontend expectations
+        privacy_map = {1: 'public', 2: 'local', 3: 'followers', 4: 'private'}
+        
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "bio": user.bio or "",
+            "location": {"city": "", "region": ""},  # TODO: Add actual location fields
+            "profile_visibility": privacy_map.get(user.privacy_level, 'public'),
+            "default_post_privacy": 'public',  # TODO: Add to user model
+            "email_notifications": True,  # TODO: Get from notification preferences
+            "browser_notifications": False,
+        })
+    
+    elif request.method == "PUT":
+        # Update user settings
+        data = request.data
+        
+        if "display_name" in data:
+            user.display_name = data["display_name"]
+        if "bio" in data:
+            user.bio = data["bio"]
+        if "privacy_level" in data:
+            user.privacy_level = data["privacy_level"]
+        if "location_privacy_radius" in data:
+            user.location_privacy_radius = data["location_privacy_radius"]
+        
+        user.save()
+        
+        return Response({
+            "message": "Settings updated successfully",
+            "user": UserSerializer(user).data
+        })
