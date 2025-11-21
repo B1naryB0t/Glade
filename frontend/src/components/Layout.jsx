@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate, Outlet } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
@@ -37,9 +37,8 @@ function Layout({ children }) {
                 </Link>
               </div>
               <div className="flex-1 max-w-md mx-4">
-  <UserSearch />
-</div>
-
+                <UserSearch />
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -73,7 +72,7 @@ function Layout({ children }) {
           </div>
         </div>
       </nav>
-      <main><Outlet /></main>
+      <main>{children}</main>
     </div>
   );
 }
