@@ -237,10 +237,13 @@ function SettingsPage() {
                 <input
                   type="text"
                   value={settings.username}
-                  onChange={(e) => handleChange('username', e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  disabled
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed sm:text-sm"
                   placeholder="Your username"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Username cannot be changed
+                </p>
               </div>
 
               <div>
