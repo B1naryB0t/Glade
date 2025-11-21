@@ -12,6 +12,8 @@ import SettingsPage from "./pages/SettingsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
+import FollowRequestsPage from "./pages/FollowRequestsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 // Protected / Public Route wrappers
 function ProtectedRoute({ children }) {
@@ -103,6 +105,8 @@ export default function App() {
           path="notifications/settings"
           element={<NotificationSettingsPage />}
         />
+        <Route path="follow-requests" element={<FollowRequestsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
 
       {/* Catch all - redirect to home */}
