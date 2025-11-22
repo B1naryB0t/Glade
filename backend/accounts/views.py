@@ -592,6 +592,7 @@ def user_settings(request):
     
     elif request.method == "PUT":
         # Update user settings
+        from django.contrib.gis.geos import Point
         data = request.data
         
         if "display_name" in data:
@@ -602,6 +603,15 @@ def user_settings(request):
             user.privacy_level = data["privacy_level"]
         if "location_privacy_radius" in data:
             user.location_privacy_radius = data["location_privacy_radius"]
+        
+        # Update location if provided
+        if "latitude" in data and "longitude" in data:
+            lat = data["latitude"]
+            lng = data["longitude"]
+            if lat is not None and lng is not None:
+                user.approximate_location = Point(lng, lat)
+            else:
+                user.approximate_location = None
         
         user.save()
         

@@ -42,17 +42,25 @@ class PrivacyService:
         if post.author == user:
             return True
 
-        # Check visibility level
-        if post.visibility == 1:  # Public
-            return True
-        elif post.visibility == 4:  # Private
+        # Check base visibility level
+        if post.visibility == 4:  # Private
             return False
         elif post.visibility == 3:  # Followers only
-            return self._is_follower(user, post.author)
-        elif post.visibility == 2:  # Local
-            return self._is_in_local_area(user, post)
+            if not self._is_follower(user, post.author):
+                return False
+        elif post.visibility == 1:  # Public
+            pass  # Anyone can see (if location check passes)
+        elif post.visibility == 2:  # Local (legacy)
+            if not self._is_in_local_area(user, post):
+                return False
 
-        return False
+        # Additional location filter (if location_radius is set)
+        # This applies on top of visibility (e.g., "public + nearby" or "followers + nearby")
+        if post.location_radius and post.location:
+            if not self._is_in_local_area(user, post):
+                return False
+
+        return True
 
     @staticmethod
     def _is_follower(follower: User, following: User) -> bool:
@@ -70,6 +78,8 @@ class PrivacyService:
         # Use post's location radius or default
         radius = post.location_radius or settings.DEFAULT_LOCATION_RADIUS
 
-        # Calculate distance
-        distance = user.approximate_location.distance(post.location)
-        return distance <= D(m=radius)
+        # Calculate distance (returns degrees, convert to meters)
+        distance_degrees = user.approximate_location.distance(post.location)
+        distance_meters = distance_degrees * 111320  # Approximate conversion
+        
+        return distance_meters <= radius
