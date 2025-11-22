@@ -51,7 +51,7 @@ function Feed({ posts, isLoading, error }) {
   }
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-4">
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}

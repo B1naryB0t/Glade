@@ -7,7 +7,7 @@ function PostForm({ onPostCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || isPosting) return; // Prevent double submission
 
     try {
       setIsPosting(true);
@@ -21,13 +21,15 @@ function PostForm({ onPostCreated }) {
       console.log('Creating post:', postData);
       const newPost = await postService.createPost(postData);
 
+      // Clear content immediately after successful post
+      setContent('');
+
       if (onPostCreated) {
         onPostCreated(newPost);
       }
-
-      setContent('');
     } catch (error) {
       console.error("Error creating post:", error);
+      alert('Failed to create post. Please try again.');
     } finally {
       setIsPosting(false);
     }
