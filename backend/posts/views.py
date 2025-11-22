@@ -191,6 +191,40 @@ def post_comments(request, post_id):
         return Response(serializer.errors, status=400)
 
 
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def delete_post(request, post_id):
+    """Delete a post (only by author)"""
+    try:
+        post = Post.objects.get(id=post_id)
+    except Post.DoesNotExist:
+        return Response({"error": "Post not found"}, status=404)
+
+    # Only author can delete their post
+    if post.author != request.user:
+        return Response({"error": "You can only delete your own posts"}, status=403)
+
+    post.delete()
+    return Response({"message": "Post deleted successfully"}, status=200)
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def delete_comment(request, comment_id):
+    """Delete a comment (only by author)"""
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found"}, status=404)
+
+    # Only author can delete their comment
+    if comment.author != request.user:
+        return Response({"error": "You can only delete your own comments"}, status=403)
+
+    comment.delete()
+    return Response({"message": "Comment deleted successfully"}, status=200)
+
+
 
 class UserPostsView(generics.ListAPIView):
     """Get posts by a specific user"""
