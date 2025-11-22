@@ -365,6 +365,39 @@ class GladeAdmin:
             print(f'   Last Active: {row["last_active_at"].strftime("%Y-%m-%d %H:%M") if row["last_active_at"] else "Never"}')
             print(f'   Posts: {row["post_count"]} | Following: {row["following_count"]} | Followers: {row["followers_count"]}')
 
+    def verify_user_email(self, username):
+        """Manually verify a user's email"""
+        self.cursor.execute('''
+            SELECT id, username, email, email_verified
+            FROM accounts_user
+            WHERE username = %s
+        ''', (username,))
+        
+        user = self.cursor.fetchone()
+        if not user:
+            print(f'\n✗ User {username} not found')
+            return
+        
+        print(f'\nUser: {user["username"]}')
+        print(f'Email: {user["email"]}')
+        print(f'Currently Verified: {"Yes ✓" if user["email_verified"] else "No ✗"}')
+        
+        if user["email_verified"]:
+            print('\n⚠️  Email is already verified')
+            return
+        
+        confirm = input(f'\nVerify email for {username}? (yes/no): ')
+        
+        if confirm.lower() == 'yes':
+            self.cursor.execute(
+                'UPDATE accounts_user SET email_verified = true WHERE id = %s',
+                (user['id'],)
+            )
+            self.conn.commit()
+            print(f'\n✓ Email verified for {username}')
+        else:
+            print('\nVerification cancelled')
+
     def interactive_mode(self):
         """Interactive dashboard mode"""
         while True:
@@ -380,12 +413,13 @@ class GladeAdmin:
             print('  [3] 🟢 Show Active Users')
             print('  [4] 🔍 Search User')
             print('  [5] 🗑️  Delete User')
-            print('  [6] 🚨 Suspicious Activity')
-            print('  [7] 📋 Quick Summary')
+            print('  [6] ✉️  Verify User Email')
+            print('  [7] 🚨 Suspicious Activity')
+            print('  [8] 📋 Quick Summary')
             print('  [0] 🚪 Exit')
             print('\n' + '-'*60)
             
-            choice = input('\n👉 Select option (0-7): ').strip()
+            choice = input('\n👉 Select option (0-8): ').strip()
             
             print('\n' + '='*60 + '\n')
             
@@ -408,14 +442,20 @@ class GladeAdmin:
                 else:
                     print('❌ Username cannot be empty')
             elif choice == '6':
-                self.show_suspicious_activity()
+                username = input('Enter username to verify: ').strip()
+                if username:
+                    self.verify_user_email(username)
+                else:
+                    print('❌ Username cannot be empty')
             elif choice == '7':
+                self.show_suspicious_activity()
+            elif choice == '8':
                 self.quick_summary()
             elif choice == '0':
                 print('\n👋 Goodbye!\n')
                 break
             else:
-                print('❌ Invalid option. Please select 0-7.')
+                print('❌ Invalid option. Please select 0-8.')
             
             input('\n📌 Press Enter to continue...')
 
