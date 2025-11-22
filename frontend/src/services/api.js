@@ -188,12 +188,11 @@ export const api = {
 
   /**
    * Delete comment
-   * @param {string} postId
    * @param {string} commentId
    * @returns {Promise<void>}
    */
-  async deleteComment(postId, commentId) {
-    return await postService.deleteComment(postId, commentId);
+  async deleteComment(commentId) {
+    return await postService.deleteComment(commentId);
   },
 
   // --------------------------------------------------------------------------

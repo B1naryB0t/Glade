@@ -2,8 +2,10 @@
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 function PostCard({ post }) {
+  const { user: currentUser } = useAuth();
   // Post state
   const [liked, setLiked] = useState(post?.liked_by_current_user || false);
   const [likeCount, setLikeCount] = useState(post?.likes_count || 0);
@@ -119,6 +121,30 @@ function PostCard({ post }) {
   const userId = post.author?.id || post.user?.id || 'unknown';
   const userInitial = (displayName[0] || 'U').toUpperCase();
 
+  const handleDeletePost = async () => {
+    if (!window.confirm('Are you sure you want to delete this post?')) return;
+    
+    try {
+      await api.deletePost(post.id);
+      window.location.reload(); // Refresh to show updated feed
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      await api.deleteComment(commentId);
+      setComments(comments.filter(c => c.id !== commentId));
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment');
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow border border-gray-100 p-5 mb-4">
 
@@ -146,10 +172,25 @@ function PostCard({ post }) {
           </div>
         </Link>
 
-        {/* Visibility badge */}
-        <div className="flex items-center text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full">
-          <span className="mr-1">{visibilityInfo.icon}</span>
-          <span className="font-medium">{visibilityInfo.label}</span>
+        <div className="flex items-center gap-2">
+          {/* Visibility badge */}
+          <div className="flex items-center text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full">
+            <span className="mr-1">{visibilityInfo.icon}</span>
+            <span className="font-medium">{visibilityInfo.label}</span>
+          </div>
+          
+          {/* Delete button (only for post author) */}
+          {currentUser && post.author?.username === currentUser.username && (
+            <button
+              onClick={handleDeletePost}
+              className="text-red-500 hover:text-red-700 p-1"
+              title="Delete post"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -199,7 +240,7 @@ function PostCard({ post }) {
             <div className="space-y-3 mb-4">
               {comments.map(comment => (
                 <div key={comment.id} className="p-3 bg-cream rounded-lg">
-                  <div className="flex items-center mb-2">
+                  <div className="flex items-center justify-between mb-2">
                     <Link to={`/profile/${comment.author?.username || 'unknown'}`} className="flex items-center">
                       <div className="w-8 h-8 bg-olive rounded-full flex items-center justify-center mr-2">
                         <span className="text-white text-sm">
@@ -211,6 +252,19 @@ function PostCard({ post }) {
                         <div className="text-xs text-gray-500">{getTimeAgo(comment.created_at)}</div>
                       </div>
                     </Link>
+                    
+                    {/* Delete button (only for comment author) */}
+                    {currentUser && comment.author?.username === currentUser.username && (
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Delete comment"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   <p className="text-burgundy">{comment.content}</p>
                 </div>
