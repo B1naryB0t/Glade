@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { apiClient } from '../services/apiClient';
+import LocationPicker from '../components/LocationPicker';
 
 function SettingsPage() {
   const navigate = useNavigate();
@@ -10,7 +12,8 @@ function SettingsPage() {
     email: '',
     username: '',
     bio: '',
-    location: { city: '', region: '' },
+    latitude: null,
+    longitude: null,
     profile_visibility: 'public',
     default_post_privacy: 'public',
     email_notifications: true,
@@ -37,7 +40,8 @@ function SettingsPage() {
           email: userSettings.email || '',
           username: userSettings.username || '',
           bio: userSettings.bio || '',
-          location: userSettings.location || { city: '', region: '' },
+          latitude: userSettings.latitude || null,
+          longitude: userSettings.longitude || null,
           profile_visibility: userSettings.profile_visibility || 'public',
           default_post_privacy: userSettings.default_post_privacy || 'public',
           email_notifications: userSettings.email_notifications ?? true,
@@ -58,25 +62,19 @@ function SettingsPage() {
 
   // Handle setting changes
   const handleChange = (field, value) => {
-    setSettings(prevSettings => {
-      // Handle nested location object
-      if (field.startsWith('location.')) {
-        const locationField = field.split('.')[1];
-        return {
-          ...prevSettings,
-          location: {
-            ...prevSettings.location,
-            [locationField]: value
-          }
-        };
-      }
-      
-      // Handle regular fields
-      return {
-        ...prevSettings,
-        [field]: value
-      };
-    });
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      [field]: value
+    }));
+  };
+
+  // Handle location change from LocationPicker
+  const handleLocationChange = (lat, lng) => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      latitude: lat,
+      longitude: lng
+    }));
   };
 
   // Handle form submission
@@ -84,6 +82,14 @@ function SettingsPage() {
     try {
       setSaving(true);
       console.log('Saving settings:', settings);
+      
+      // Save location if provided
+      if (settings.latitude && settings.longitude) {
+        await apiClient.post('/api/v1/auth/location/update/', {
+          latitude: settings.latitude,
+          longitude: settings.longitude,
+        });
+      }
       
       await api.updateUserSettings(settings);
       
@@ -102,39 +108,7 @@ function SettingsPage() {
     }
   };
 
-  // Get user's current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            // Typically you would use a geocoding service here
-            // For this demo, we'll just set some default values
-            setSettings(prev => ({
-              ...prev,
-              location: {
-                city: 'Charlotte', // This would normally come from geocoding API
-                region: 'North Carolina' // This would normally come from geocoding API
-              }
-            }));
-          } catch (err) {
-            console.error('Error getting location:', err);
-            setError('Could not determine your current location.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error) => {
-          console.error('Error getting position:', error);
-          setLoading(false);
-          setError('Failed to get your current location. Please enter it manually.');
-        }
-      );
-    } else {
-      setError('Geolocation is not supported by your browser.');
-    }
-  };
+
 
   if (loading) {
     return (
@@ -276,46 +250,20 @@ function SettingsPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location
-                  </label>
-                  <button
-                    type="button"
-                    onClick={getCurrentLocation}
-                    className="text-sm text-indigo-600 hover:text-indigo-800"
-                  >
-                    Use my current location
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <input
-                      type="text"
-                      value={settings.location?.city || ''}
-                      onChange={(e) => handleChange('location.city', e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="City"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={settings.location?.region || ''}
-                      onChange={(e) => handleChange('location.region', e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="State/Province/Region"
-                    />
-                  </div>
-                </div>
+                <LocationPicker
+                  onLocationChange={handleLocationChange}
+                  initialLat={settings.latitude}
+                  initialLng={settings.longitude}
+                  required={false}
+                />
                 <div className="mt-2 text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
                   <div className="flex items-start">
                     <svg className="h-5 w-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <p className="font-medium">This location will be used for your posts</p>
-                      <p className="mt-1">Your posts will automatically include this location unless you change it here.</p>
+                      <p className="font-medium">Your location is fuzzed for privacy</p>
+                      <p className="mt-1">Your exact location is never stored. We apply privacy fuzzing to protect your location.</p>
                     </div>
                   </div>
                 </div>
