@@ -108,7 +108,7 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 20,
+    "PAGE_SIZE": 10,
     "DEFAULT_THROTTLE_RATES": {
         "registration": "2/hour",  # 2 registrations per hour per IP
         "anon": "100/hour",  # General anonymous rate limit
