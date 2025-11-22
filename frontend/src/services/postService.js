@@ -1,14 +1,6 @@
 // frontend/src/services/postService.js
 import { apiClient } from "./apiClient";
 
-// Visibility mapping: frontend string -> backend integer
-const VISIBILITY_MAP = {
-  public: 1,
-  local: 2,
-  followers: 3,
-  private: 4,
-};
-
 export const postService = {
   /**
    * Create new post
@@ -16,12 +8,7 @@ export const postService = {
    * @returns {Promise<Object>}
    */
   async createPost(postData) {
-    // Map visibility string to integer
-    const mappedData = {
-      ...postData,
-      visibility: VISIBILITY_MAP[postData.visibility] || 1,
-    };
-    const response = await apiClient.post("/posts/", mappedData);
+    const response = await apiClient.post("/posts/", postData);
     return response.data;
   },
 
