@@ -24,4 +24,5 @@ urlpatterns = [
     path("follow-requests/<uuid:follow_id>/reject/", views.reject_follow_request, name="reject-follow-request"),
     path("profile/<str:username>/followers/", views.get_followers, name="get-followers"),
     path("profile/<str:username>/following/", views.get_following, name="get-following"),
+    path("settings/", views.user_settings, name="user-settings"),
 ]
