@@ -52,6 +52,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     author = UserSerializer(read_only=True)
     likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
     replies_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     location_name = serializers.SerializerMethodField()
@@ -69,6 +70,7 @@ class PostSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "likes_count",
+            "comments_count",
             "replies_count",
             "is_liked",
         ]
@@ -76,6 +78,10 @@ class PostSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_likes_count(obj):
         return obj.likes.count()
+
+    @staticmethod
+    def get_comments_count(obj):
+        return obj.comments.count()
 
     @staticmethod
     def get_replies_count(obj):

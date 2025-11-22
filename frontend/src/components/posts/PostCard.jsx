@@ -12,6 +12,7 @@ function PostCard({ post }) {
   // Post state
   const [liked, setLiked] = useState(post?.liked_by_current_user || false);
   const [likeCount, setLikeCount] = useState(post?.likes_count || 0);
+  const [commentCount, setCommentCount] = useState(post?.comments_count || 0);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -71,12 +72,19 @@ function PostCard({ post }) {
     e.preventDefault();
     if (!post?.id || !newComment.trim()) return;
 
+    // Optimistic update
+    const previousCount = commentCount;
+    setCommentCount(prev => prev + 1);
+
     try {
       await api.addComment(post.id, newComment);
       await loadComments(); // reload comments to prevent duplicates
       setNewComment('');
     } catch (error) {
       console.error('Error adding comment:', error);
+      // Rollback on failure
+      setCommentCount(previousCount);
+      alert('Failed to add comment. Please try again.');
     }
   };
 
@@ -135,11 +143,19 @@ function PostCard({ post }) {
   };
 
   const handleDeleteComment = async (commentId) => {
+    // Optimistic update
+    const previousCount = commentCount;
+    const previousComments = comments;
+    setCommentCount(prev => Math.max(0, prev - 1));
+    setComments(comments.filter(c => c.id !== commentId));
+
     try {
       await api.deleteComment(commentId);
-      setComments(comments.filter(c => c.id !== commentId));
     } catch (error) {
       console.error('Error deleting comment:', error);
+      // Rollback on failure
+      setCommentCount(previousCount);
+      setComments(previousComments);
       alert('Failed to delete comment');
     }
   };
@@ -225,7 +241,7 @@ function PostCard({ post }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <span>{showComments ? 'Hide Comments' : 'Comment'}</span>
+            <span>{commentCount}</span>
           </button>
         </div>
       </div>

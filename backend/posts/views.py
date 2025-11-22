@@ -30,7 +30,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         
         # Simplified: Show all public posts and posts from users you follow
         # TODO: Add back location-based filtering later
-        queryset = Post.objects.select_related("author").prefetch_related("likes")
+        queryset = Post.objects.select_related("author").prefetch_related("likes", "comments")
         
         # Show public posts (visibility=1) or posts from followed users
         return queryset.filter(
