@@ -47,6 +47,7 @@ class UserSerializer(serializers.ModelSerializer):
             "display_name",
             "bio",
             "avatar_url",
+            "email_verified",
             "created_at",
             "followers_count",
             "following_count",
