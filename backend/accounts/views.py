@@ -397,6 +397,50 @@ def reject_follow_request(request, follow_id):
         return Response({"error": "Follow request not found"}, status=404)
 
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def get_followers(request, username):
+    """Get list of users following the specified user"""
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+    
+    # Get accepted followers
+    followers = Follow.objects.filter(
+        following=user,
+        accepted=True
+    ).select_related('follower')
+    
+    followers_data = [
+        UserSerializer(follow.follower, context={"request": request}).data
+        for follow in followers
+    ]
+    
+    return Response({"results": followers_data, "count": len(followers_data)}, status=200)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def get_following(request, username):
+    """Get list of users that the specified user is following"""
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+    
+    # Get accepted follows
+    following = Follow.objects.filter(
+        follower=user,
+        accepted=True
+    ).select_related('following')
+    
+    following_data = [
+        UserSerializer(follow.following, context={"request": request}).data
+        for follow in following
+    ]
+    
+    return Response({"results": following_data, "count": len(following_data)}, status=200)
 
 @api_view(["GET", "PUT"])
 @permission_classes([permissions.IsAuthenticated])
