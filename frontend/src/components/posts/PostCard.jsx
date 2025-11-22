@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import ConfirmModal from '../common/ConfirmModal';
 
 function PostCard({ post }) {
   const { user: currentUser } = useAuth();
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
   // Post state
   const [liked, setLiked] = useState(post?.liked_by_current_user || false);
   const [likeCount, setLikeCount] = useState(post?.likes_count || 0);
@@ -122,8 +125,6 @@ function PostCard({ post }) {
   const userInitial = (displayName[0] || 'U').toUpperCase();
 
   const handleDeletePost = async () => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
-    
     try {
       await api.deletePost(post.id);
       window.location.reload(); // Refresh to show updated feed
@@ -134,8 +135,6 @@ function PostCard({ post }) {
   };
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return;
-    
     try {
       await api.deleteComment(commentId);
       setComments(comments.filter(c => c.id !== commentId));
@@ -182,7 +181,7 @@ function PostCard({ post }) {
           {/* Delete button (only for post author) */}
           {currentUser && post.author?.username === currentUser.username && (
             <button
-              onClick={handleDeletePost}
+              onClick={() => setShowDeletePostModal(true)}
               className="text-red-500 hover:text-red-700 p-1"
               title="Delete post"
             >
@@ -256,7 +255,7 @@ function PostCard({ post }) {
                     {/* Delete button (only for comment author) */}
                     {currentUser && comment.author?.username === currentUser.username && (
                       <button
-                        onClick={() => handleDeleteComment(comment.id)}
+                        onClick={() => setCommentToDelete(comment.id)}
                         className="text-red-500 hover:text-red-700 p-1"
                         title="Delete comment"
                       >
@@ -298,6 +297,26 @@ function PostCard({ post }) {
           </form>
         </div>
       )}
+
+      {/* Delete Post Modal */}
+      <ConfirmModal
+        isOpen={showDeletePostModal}
+        onClose={() => setShowDeletePostModal(false)}
+        onConfirm={handleDeletePost}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+      />
+
+      {/* Delete Comment Modal */}
+      <ConfirmModal
+        isOpen={commentToDelete !== null}
+        onClose={() => setCommentToDelete(null)}
+        onConfirm={() => handleDeleteComment(commentToDelete)}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+      />
     </div>
   );
 }
