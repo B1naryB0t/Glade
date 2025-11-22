@@ -213,7 +213,7 @@ class GladeAdmin:
     def delete_user(self, username):
         """Delete a user"""
         self.cursor.execute('''
-            SELECT username, email, created_at,
+            SELECT id, username, email, created_at,
                    (SELECT COUNT(*) FROM posts_post WHERE author_id = accounts_user.id) as post_count
             FROM accounts_user
             WHERE username = %s
@@ -232,9 +232,44 @@ class GladeAdmin:
         confirm = input(f'\nAre you sure you want to delete {username}? (yes/no): ')
         
         if confirm.lower() == 'yes':
-            self.cursor.execute('DELETE FROM accounts_user WHERE username = %s', (username,))
+            user_id = user['id']
+            
+            # Delete related records first to avoid foreign key violations
+            print('Deleting related records...')
+            
+            # List of tables to clean up (table_name, column_name)
+            cleanup_tables = [
+                ('accounts_emailverificationtoken', 'user_id'),
+                ('accounts_loginattempt', 'user_id'),
+                ('accounts_securityevent', 'user_id'),
+                ('posts_post', 'author_id'),
+                ('notifications_notificationpreference', 'user_id'),
+                ('authtoken_token', 'user_id'),
+            ]
+            
+            for table, column in cleanup_tables:
+                try:
+                    self.cursor.execute(f'DELETE FROM {table} WHERE {column} = %s', (user_id,))
+                except Exception as e:
+                    print(f'  Warning: Could not delete from {table}: {e}')
+            
+            # Delete follows (both as follower and following)
+            try:
+                self.cursor.execute('DELETE FROM accounts_follow WHERE follower_id = %s OR following_id = %s', (user_id, user_id))
+            except Exception as e:
+                print(f'  Warning: Could not delete follows: {e}')
+            
+            # Delete notifications (both as recipient and actor)
+            try:
+                self.cursor.execute('DELETE FROM notifications_notification WHERE recipient_id = %s OR actor_id = %s', (user_id, user_id))
+            except Exception as e:
+                print(f'  Warning: Could not delete notifications: {e}')
+            
+            # Finally delete the user
+            self.cursor.execute('DELETE FROM accounts_user WHERE id = %s', (user_id,))
+            
             self.conn.commit()
-            print(f'\n✓ User {username} deleted successfully')
+            print(f'\n✓ User {username} and all related data deleted successfully')
         else:
             print('\nDeletion cancelled')
 
