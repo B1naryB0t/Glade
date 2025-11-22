@@ -19,4 +19,3 @@ class ResendVerificationThrottle(UserRateThrottle):
     Enforces 5 minute wait between requests.
     """
     scope = 'resend_verification'
-    rate = '1/5min'  # 1 request per 5 minutes
