@@ -59,12 +59,31 @@ function PostCard({ post }) {
   const handleLike = async () => {
     if (!post?.id) return;
 
+    // Optimistic update
+    const previousLiked = liked;
+    const previousCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+
     try {
-      const result = await api.toggleLike(post.id);
+      let result;
+      if (liked) {
+        // Currently liked, so unlike
+        result = await api.unlikePost(post.id);
+      } else {
+        // Currently not liked, so like
+        result = await api.likePost(post.id);
+      }
+      
+      // Update with server response
       setLiked(result.liked_by_current_user);
       setLikeCount(result.likes_count);
     } catch (error) {
       console.error('Error toggling like:', error);
+      // Rollback on failure
+      setLiked(previousLiked);
+      setLikeCount(previousCount);
+      alert('Failed to update like. Please try again.');
     }
   };
 

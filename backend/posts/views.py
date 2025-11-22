@@ -122,18 +122,26 @@ def like_post(request, post_id):
             # Create notification for post author
             NotificationService.notify_post_like(post, request.user)
 
-            # TODO: Federate like activity
-            return Response({"liked": True}, status=201)
-        return Response({"liked": True}, status=200)
+        # TODO: Federate like activity
+        likes_count = post.likes.count()
+        return Response({
+            "liked_by_current_user": True,
+            "likes_count": likes_count
+        }, status=201 if created else 200)
 
     else:  # DELETE
         try:
             like = Like.objects.get(user=request.user, post=post)
             like.delete()
             # TODO: Federate undo like activity
-            return Response({"liked": False}, status=200)
         except Like.DoesNotExist:
-            return Response({"liked": False}, status=200)
+            pass
+        
+        likes_count = post.likes.count()
+        return Response({
+            "liked_by_current_user": False,
+            "likes_count": likes_count
+        }, status=200)
 
 
 @api_view(["POST"])

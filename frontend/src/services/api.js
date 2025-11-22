@@ -145,6 +145,24 @@ export const api = {
   },
 
   /**
+   * Like a post
+   * @param {string} postId
+   * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}
+   */
+  async likePost(postId) {
+    return await postService.likePost(postId);
+  },
+
+  /**
+   * Unlike a post
+   * @param {string} postId
+   * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}
+   */
+  async unlikePost(postId) {
+    return await postService.unlikePost(postId);
+  },
+
+  /**
    * Toggle like on post
    * @param {string} postId
    * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}

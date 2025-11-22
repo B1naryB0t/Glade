@@ -54,7 +54,7 @@ class PostSerializer(serializers.ModelSerializer):
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     replies_count = serializers.SerializerMethodField()
-    is_liked = serializers.SerializerMethodField()
+    liked_by_current_user = serializers.SerializerMethodField()
     location_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -72,7 +72,7 @@ class PostSerializer(serializers.ModelSerializer):
             "likes_count",
             "comments_count",
             "replies_count",
-            "is_liked",
+            "liked_by_current_user",
         ]
 
     @staticmethod
@@ -87,7 +87,7 @@ class PostSerializer(serializers.ModelSerializer):
     def get_replies_count(obj):
         return obj.replies.count()
 
-    def get_is_liked(self, obj):
+    def get_liked_by_current_user(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return obj.likes.filter(user=request.user).exists()
