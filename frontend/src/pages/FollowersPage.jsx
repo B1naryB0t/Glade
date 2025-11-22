@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/userService';
 import UserCard from '../components/users/UserCard';
@@ -9,37 +10,23 @@ function FollowersPage() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   
-  const [followers, setFollowers] = useState([]);
-  const [profileUser, setProfileUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const profileUsername = username === 'me' ? currentUser?.username : username;
 
-  useEffect(() => {
-    loadFollowers();
-  }, [username]);
+  // Fetch profile data
+  const { data: profileUser } = useQuery({
+    queryKey: ['userProfile', profileUsername],
+    queryFn: () => userService.getUserProfile(profileUsername),
+    enabled: !!profileUsername,
+  });
 
-  const loadFollowers = async () => {
-    try {
-      setLoading(true);
-      
-      const profileUsername = username === 'me' ? currentUser?.username : username;
-      
-      // Load user profile
-      const userData = await userService.getUserProfile(profileUsername);
-      setProfileUser(userData);
-      
-      // Load followers using userService
-      const followersData = await userService.getFollowers(profileUsername);
-      setFollowers(followersData.results || followersData || []);
-      
-      setError(null);
-    } catch (err) {
-      console.error('Failed to load followers:', err);
-      setError('Could not load followers. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Fetch followers list
+  const { data: followersData, isLoading: loading, error } = useQuery({
+    queryKey: ['followers', profileUsername],
+    queryFn: () => userService.getFollowers(profileUsername),
+    enabled: !!profileUsername,
+  });
+
+  const followers = followersData?.results || followersData || [];
 
   const isOwnProfile = currentUser && (
     username === 'me' || 
@@ -69,7 +56,9 @@ function FollowersPage() {
       <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-red-700">
+              {error?.message || 'Could not load followers. Please try again.'}
+            </p>
           </div>
           <button 
             onClick={() => navigate(-1)}

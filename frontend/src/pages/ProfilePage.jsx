@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import PostCard from '../components/posts/PostCard';
@@ -8,46 +9,40 @@ function ProfilePage() {
   const { username } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
   
-  const [profileUser, setProfileUser] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const profileUsername = username === 'me' ? currentUser?.username : username;
 
-  console.log('ProfilePage rendering with username:', username);
-  console.log('Current user:', currentUser);
+  // Fetch profile data
+  const { data: profileUser, isLoading: profileLoading, error: profileError } = useQuery({
+    queryKey: ['userProfile', profileUsername],
+    queryFn: () => api.getUserProfile(profileUsername),
+    enabled: !!profileUsername,
+  });
 
-  useEffect(() => {
-    loadProfile();
-  }, [username]);
+  // Fetch user posts
+  const { data: postsData, isLoading: postsLoading } = useQuery({
+    queryKey: ['userPosts', profileUsername],
+    queryFn: () => api.getUserPosts(profileUsername),
+    enabled: !!profileUsername,
+  });
 
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      console.log('Loading profile for username:', username);
-      
-      // Determine which username to use
-      const profileUsername = username === 'me' ? currentUser?.username : username;
-      console.log('Using profile username:', profileUsername);
-      
-      // Load user profile
-      const userData = await api.getUserProfile(profileUsername);
-      console.log('Profile data loaded:', userData);
-      setProfileUser(userData);
-      
-      // Load user's posts
-      const postsData = await api.getUserPosts(profileUsername);
-      console.log('User posts loaded:', postsData);
-      setPosts(postsData.results || []);
-      
-      setError(null);
-    } catch (err) {
-      console.error('Failed to load profile:', err);
-      setError('Could not load the profile. The user may not exist or you may not have permission to view it.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Follow/unfollow mutation
+  const followMutation = useMutation({
+    mutationFn: (isFollowing) => 
+      isFollowing ? api.unfollowUser(profileUsername) : api.followUser(profileUsername),
+    onSuccess: () => {
+      // Invalidate all related queries to keep data consistent
+      queryClient.invalidateQueries({ queryKey: ['userProfile', profileUsername] });
+      queryClient.invalidateQueries({ queryKey: ['followers', profileUsername] });
+      queryClient.invalidateQueries({ queryKey: ['following', currentUser?.username] });
+      queryClient.invalidateQueries({ queryKey: ['userProfile', currentUser?.username] });
+    },
+  });
+
+  const posts = postsData?.results || [];
+  const loading = profileLoading || postsLoading;
+  const error = profileError?.message || null;
 
   // Check if this is the current user's profile
   const isOwnProfile = currentUser && (
@@ -112,8 +107,6 @@ function ProfilePage() {
     );
   }
 
-  console.log('Rendering profile for:', profileUser.username);
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Profile Header */}
@@ -154,14 +147,16 @@ function ProfilePage() {
                   ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              onClick={() => {
-                setProfileUser({
-                  ...profileUser,
-                  is_following: !profileUser.is_following
-                });
-              }}
+              onClick={() => followMutation.mutate(profileUser.is_following)}
+              disabled={followMutation.isPending}
             >
-              {profileUser.is_following ? 'Unfollow' : profileUser.follow_requested ? 'Requested' : 'Follow'}
+              {followMutation.isPending 
+                ? '...' 
+                : profileUser.is_following 
+                  ? 'Unfollow' 
+                  : profileUser.follow_requested 
+                    ? 'Requested' 
+                    : 'Follow'}
             </button>
           )}
         </div>
