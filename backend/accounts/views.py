@@ -9,14 +9,14 @@ from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from .serializers import (
     UserProfileSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
-from .throttles import RegistrationRateThrottle
+from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
@@ -164,10 +164,13 @@ def verify_email(request, token):
     )
 
 
+from rest_framework.decorators import throttle_classes
+
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([ResendVerificationThrottle])
 def resend_verification_email(request):
-    """Resend verification email"""
+    """Resend verification email with rate limiting"""
     user = request.user
 
     # The analyzer can't guarantee 'email_verified' exists on the user model,
@@ -455,6 +458,7 @@ def user_settings(request):
         return Response({
             "username": user.username,
             "email": user.email,
+            "email_verified": user.email_verified,
             "bio": user.bio or "",
             "location": {"city": "", "region": ""},  # TODO: Add actual location fields
             "profile_visibility": privacy_map.get(user.privacy_level, 'public'),

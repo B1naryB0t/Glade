@@ -20,7 +20,9 @@ function EmailVerificationPendingPage() {
       await authService.resendVerificationEmail();
       setMessage('Verification email sent! Please check your inbox.');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to send email. Please try again.');
+      console.error('Resend error:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to send email. Please try again.';
+      setError(errorMessage);
     } finally {
       setResending(false);
     }
