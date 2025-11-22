@@ -115,8 +115,9 @@ function PostCard({ post }) {
   };
 
   const username = post.author?.username || post.user?.username || 'Unknown';
+  const displayName = post.author?.display_name || post.user?.display_name || username;
   const userId = post.author?.id || post.user?.id || 'unknown';
-  const userInitial = (username[0] || 'U').toUpperCase();
+  const userInitial = (displayName[0] || 'U').toUpperCase();
 
   return (
     <div className="bg-white rounded-lg shadow border border-gray-100 p-5 mb-4">
@@ -128,7 +129,7 @@ function PostCard({ post }) {
             <span className="text-white font-semibold">{userInitial}</span>
           </div>
           <div className="ml-3">
-            <h3 className="font-semibold text-burgundy">{username}</h3>
+            <h3 className="font-semibold text-burgundy">{displayName}</h3>
             <div className="text-xs text-gray-500 flex items-center">
               <span>{getTimeAgo(post.created_at)}</span>
 
@@ -199,14 +200,14 @@ function PostCard({ post }) {
               {comments.map(comment => (
                 <div key={comment.id} className="p-3 bg-cream rounded-lg">
                   <div className="flex items-center mb-2">
-                    <Link to={`/profile/${comment.user?.username || 'unknown'}`} className="flex items-center">
+                    <Link to={`/profile/${comment.author?.username || 'unknown'}`} className="flex items-center">
                       <div className="w-8 h-8 bg-olive rounded-full flex items-center justify-center mr-2">
                         <span className="text-white text-sm">
-                          {(comment.user?.username?.[0] || 'U').toUpperCase()}
+                          {(comment.author?.username?.[0] || 'U').toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">{comment.user?.username || 'Unknown'}</div>
+                        <div className="text-sm font-medium">{comment.author?.display_name || comment.author?.username || 'Unknown'}</div>
                         <div className="text-xs text-gray-500">{getTimeAgo(comment.created_at)}</div>
                       </div>
                     </Link>

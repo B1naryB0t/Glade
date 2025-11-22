@@ -173,14 +173,14 @@ function PostCard({ post }) {
               {comments.map(comment => (
                 <div key={comment.id} className="p-3 bg-cream rounded-lg">
                   <div className="flex items-center mb-2">
-                    <Link to={`/profile/${comment.user?.id || 'unknown'}`} className="flex items-center">
+                    <Link to={`/profile/${comment.author?.username || 'unknown'}`} className="flex items-center">
                       <div className="w-8 h-8 bg-olive rounded-full flex items-center justify-center mr-2">
                         <span className="text-white text-sm">
-                          {(comment.user?.username?.[0] || 'U').toUpperCase()}
+                          {(comment.author?.username?.[0] || 'U').toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">{comment.user?.username || 'Unknown'}</div>
+                        <div className="text-sm font-medium">{comment.author?.display_name || comment.author?.username || 'Unknown'}</div>
                         <div className="text-xs text-gray-500">
                           {getTimeAgo(comment.created_at)}
                         </div>

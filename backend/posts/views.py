@@ -184,8 +184,10 @@ def post_comments(request, post_id):
     elif request.method == "POST":
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(author=request.user, post=post)
-            return Response(serializer.data, status=201)
+            comment = serializer.save(author=request.user, post=post)
+            # Re-serialize to include the author data
+            response_serializer = CommentSerializer(comment)
+            return Response(response_serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
 

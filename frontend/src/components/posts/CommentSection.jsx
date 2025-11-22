@@ -81,22 +81,26 @@ function CommentSection({ postId }) {
             </div>
           ) : (
             <div className="mt-3 space-y-3">
-              {comments.map((comment) => (
-                <div key={comment.id} className="p-3 bg-cream rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div className="h-8 w-8 bg-olive rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {comment.user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="ml-2">
-                      <div className="text-sm font-medium">{comment.user.username}</div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {comments.map((comment) => {
+                const username = comment.author?.username || 'Unknown';
+                const displayName = comment.author?.display_name || username;
+                return (
+                  <div key={comment.id} className="p-3 bg-cream rounded-lg">
+                    <div className="flex items-center mb-2">
+                      <div className="h-8 w-8 bg-olive rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ml-2">
+                        <div className="text-sm font-medium">{displayName}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-burgundy">{comment.content}</div>
                   </div>
-                  <div className="text-burgundy">{comment.content}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
