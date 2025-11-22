@@ -5,7 +5,7 @@ import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
 import FollowRequestsBadge from './FollowRequestsBadge';
 
-function Layout({ children }) {
+function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -38,9 +38,8 @@ function Layout({ children }) {
                 </Link>
               </div>
               <div className="flex-1 max-w-md mx-4">
-  <UserSearch />
-</div>
-
+                <UserSearch />
+              </div>
             </div>
             
             <div className="flex items-center space-x-2">

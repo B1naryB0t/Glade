@@ -1,9 +1,8 @@
+// frontend/src/App.jsx
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import Layout from "./components/Layout";
-
-// Pages
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -14,103 +13,77 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import FollowRequestsPage from "./pages/FollowRequestsPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import FollowersPage from "./pages/FollowersPage";
+import FollowingPage from "./pages/FollowingPage";
+import Loading from "./components/common/Loading";
+import "./index.css";
 
-// Protected / Public Route wrappers
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
+// Protected Layout - combines auth check with layout
+function ProtectedLayout() {
+  const { user, isLoading } = useAuth();
 
-  // Show loading state while auth is being determined
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    console.log("ProtectedRoute: Not authenticated, redirecting to login");
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  console.log(
-    "ProtectedRoute: User is authenticated, rendering protected content",
-  );
-  return children;
+  return <Layout />;
 }
 
-function PublicRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
+// Public Layout - redirects to home if already logged in
+function PublicLayout() {
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loading />
       </div>
     );
   }
 
-  // Redirect to home if already authenticated
-  if (isAuthenticated) {
-    console.log("PublicRoute: User already authenticated, redirecting to home");
+  if (user) {
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <Outlet />;
 }
 
-export default function App() {
+function App() {
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        {/* Public routes */}
+        <Route element={<PublicLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
 
-      {/* Protected routes with layout */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<HomePage />} />
-        <Route path="profile/:username" element={<ProfilePage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route
-          path="notifications/settings"
-          element={<NotificationSettingsPage />}
-        />
-        <Route path="follow-requests" element={<FollowRequestsPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
-      </Route>
+        {/* Protected routes with Layout */}
+        <Route element={<ProtectedLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
+          <Route path="/profile/:username/followers" element={<FollowersPage />} />
+          <Route path="/profile/:username/following" element={<FollowingPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+          <Route path="/follow-requests" element={<FollowRequestsPage />} />
+        </Route>
 
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
   );
 }
+
+export default App;

@@ -1,55 +1,31 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
 import PostForm from "../components/posts/PostForm";
 import Feed from "../components/posts/Feed";
 import { api } from "../services/api";
 
 function HomePage() {
-	const { user, isAuthenticated } = useAuth();
-	const [posts, setPosts] = useState([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [error, setError] = useState(null);
+	const { isAuthenticated } = useAuth();
+	const queryClient = useQueryClient();
 
-	// Load posts from the API with full response handling
-	const loadPosts = async () => {
-		try {
-			setIsLoading(true);
-			setError(null);
+	const { data: response, isLoading, error } = useQuery({
+		queryKey: ["posts"],
+		queryFn: api.getPosts,
+		enabled: isAuthenticated,
+	});
 
-			console.log("Loading posts...");
-			const response = await api.getPosts();
-			console.log("Posts loaded:", response);
-
-			if (Array.isArray(response)) {
-				setPosts(response);
-			} else if (Array.isArray(response?.results)) {
-				setPosts(response.results);
-			} else if (Array.isArray(response?.data)) {
-				setPosts(response.data);
-			} else {
-				console.error("Unexpected response format:", response);
-				setPosts([]);
-			}
-		} catch (err) {
-			console.error("Error loading posts:", err);
-			setError(err.message || "Failed to load posts");
-			setPosts([]);
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	// Trigger loading when auth state changes
-	useEffect(() => {
-		if (isAuthenticated) {
-			loadPosts();
-		}
-	}, [isAuthenticated]);
+	// Normalize response format
+	const posts = Array.isArray(response)
+		? response
+		: response?.results || response?.data || [];
 
 	// Handle new posts pushed into the feed
 	const handlePostCreated = (newPost) => {
-		console.log("New post created:", newPost);
-		setPosts((prevPosts) => [newPost, ...prevPosts]);
+		queryClient.setQueryData(["posts"], (old) => {
+			const oldPosts = Array.isArray(old) ? old : old?.results || [];
+			return [newPost, ...oldPosts];
+		});
 	};
 
 	if (!isAuthenticated) {
@@ -89,7 +65,7 @@ function HomePage() {
 
 				<PostForm onPostCreated={handlePostCreated} />
 
-				<Feed posts={posts} isLoading={isLoading} error={error} />
+				<Feed posts={posts} isLoading={isLoading} error={error?.message} />
 			</div>
 		</div>
 	);
