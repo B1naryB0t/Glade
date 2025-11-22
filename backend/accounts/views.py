@@ -20,6 +20,7 @@ from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -458,6 +459,107 @@ def get_following(request, username):
     
     return Response({"results": following_data, "count": len(following_data)}, status=200)
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def get_ip_location(request):
+    """Get approximate location from IP address"""
+    import requests
+    
+    ip_address = SessionManagementService.get_client_ip(request)
+    
+    # Skip for localhost
+    if ip_address in ['127.0.0.1', 'localhost', '::1']:
+        return Response(
+            {"error": "Cannot geolocate localhost"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    try:
+        # Using ip-api.com free tier (no API key needed)
+        response = requests.get(
+            f"http://ip-api.com/json/{ip_address}",
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get('status') == 'success':
+                return Response(
+                    {
+                        "latitude": data.get('lat'),
+                        "longitude": data.get('lon'),
+                        "city": data.get('city'),
+                        "region": data.get('regionName'),
+                        "country": data.get('country'),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+        
+        return Response(
+            {"error": "Unable to determine location from IP"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except requests.RequestException as e:
+        logger.error(f"IP geolocation request failed: {e}")
+        return Response(
+            {"error": "Geolocation service unavailable"},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def update_location(request):
+    """Update user location with privacy fuzzing"""
+    from django.contrib.gis.geos import Point
+    from privacy.services import PrivacyService
+    
+    user = request.user
+    latitude = request.data.get('latitude')
+    longitude = request.data.get('longitude')
+    
+    if not latitude or not longitude:
+        return Response(
+            {"error": "Latitude and longitude are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    try:
+        lat = float(latitude)
+        lng = float(longitude)
+        
+        # Validate ranges
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            return Response(
+                {"error": "Invalid coordinates"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Apply privacy fuzzing
+        privacy_level = user.privacy_level or 2
+        fuzzed_lat, fuzzed_lng = PrivacyService.apply_location_privacy(
+            lat, lng, privacy_level
+        )
+        
+        # Save as PostGIS Point (longitude first for PostGIS)
+        user.approximate_location = Point(fuzzed_lng, fuzzed_lat, srid=4326)
+        user.save(update_fields=['approximate_location'])
+        
+        return Response(
+            {
+                "message": "Location updated successfully",
+                "fuzzed": True,
+            },
+            status=status.HTTP_200_OK,
+        )
+    except (ValueError, TypeError) as e:
+        return Response(
+            {"error": "Invalid coordinate format"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 @api_view(["GET", "PUT"])
 @permission_classes([permissions.IsAuthenticated])
 def user_settings(request):
@@ -468,12 +570,20 @@ def user_settings(request):
         # Return user settings mapped to frontend expectations
         privacy_map = {1: 'public', 2: 'local', 3: 'followers', 4: 'private'}
         
+        # Extract lat/lng from approximate_location if it exists
+        latitude = None
+        longitude = None
+        if user.approximate_location:
+            longitude = user.approximate_location.x
+            latitude = user.approximate_location.y
+        
         return Response({
             "username": user.username,
             "email": user.email,
             "email_verified": user.email_verified,
             "bio": user.bio or "",
-            "location": {"city": "", "region": ""},  # TODO: Add actual location fields
+            "latitude": latitude,
+            "longitude": longitude,
             "profile_visibility": privacy_map.get(user.privacy_level, 'public'),
             "default_post_privacy": 'public',  # TODO: Add to user model
             "email_notifications": True,  # TODO: Get from notification preferences
