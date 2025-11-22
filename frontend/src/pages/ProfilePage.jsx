@@ -27,12 +27,47 @@ function ProfilePage() {
     enabled: !!profileUsername,
   });
 
-  // Follow/unfollow mutation
+  // Follow/unfollow mutation with optimistic updates
   const followMutation = useMutation({
     mutationFn: (isFollowing) => 
       isFollowing ? api.unfollowUser(profileUsername) : api.followUser(profileUsername),
-    onSuccess: () => {
-      // Invalidate all related queries to keep data consistent
+    onMutate: async (isFollowing) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['userProfile', profileUsername] });
+      
+      // Snapshot previous value
+      const previousProfile = queryClient.getQueryData(['userProfile', profileUsername]);
+      
+      // Optimistically update the profile
+      queryClient.setQueryData(['userProfile', profileUsername], (old) => {
+        if (isFollowing) {
+          // Unfollowing or canceling request
+          return {
+            ...old,
+            is_following: false,
+            follow_requested: false,
+            followers_count: old.is_following ? old.followers_count - 1 : old.followers_count,
+          };
+        } else {
+          // Following - don't update follower count yet (backend determines if auto-accepted)
+          return {
+            ...old,
+            is_following: false,
+            follow_requested: true,
+          };
+        }
+      });
+      
+      return { previousProfile };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousProfile) {
+        queryClient.setQueryData(['userProfile', profileUsername], context.previousProfile);
+      }
+    },
+    onSettled: () => {
+      // Refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['userProfile', profileUsername] });
       queryClient.invalidateQueries({ queryKey: ['followers', profileUsername] });
       queryClient.invalidateQueries({ queryKey: ['following', currentUser?.username] });
@@ -147,7 +182,7 @@ function ProfilePage() {
                   ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              onClick={() => followMutation.mutate(profileUser.is_following)}
+              onClick={() => followMutation.mutate(profileUser.is_following || profileUser.follow_requested)}
               disabled={followMutation.isPending}
             >
               {followMutation.isPending 
@@ -155,7 +190,7 @@ function ProfilePage() {
                 : profileUser.is_following 
                   ? 'Unfollow' 
                   : profileUser.follow_requested 
-                    ? 'Requested' 
+                    ? 'Cancel Request' 
                     : 'Follow'}
             </button>
           )}
