@@ -81,15 +81,6 @@ function SettingsPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      console.log('Saving settings:', settings);
-      
-      // Save location if provided
-      if (settings.latitude && settings.longitude) {
-        await apiClient.post('/api/v1/auth/location/update/', {
-          latitude: settings.latitude,
-          longitude: settings.longitude,
-        });
-      }
       
       await api.updateUserSettings(settings);
       
@@ -256,6 +247,7 @@ function SettingsPage() {
                   initialLng={settings.longitude}
                   required={false}
                 />
+
                 <div className="mt-2 text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
                   <div className="flex items-start">
                     <svg className="h-5 w-5 text-yellow-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
