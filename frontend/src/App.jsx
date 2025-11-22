@@ -15,6 +15,8 @@ import FollowRequestsPage from "./pages/FollowRequestsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import FollowersPage from "./pages/FollowersPage";
 import FollowingPage from "./pages/FollowingPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import EmailVerificationPendingPage from "./pages/EmailVerificationPendingPage";
 import Loading from "./components/common/Loading";
 import "./index.css";
 
@@ -32,6 +34,11 @@ function ProtectedLayout() {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Check if email is verified
+  if (!user.email_verified) {
+    return <EmailVerificationPendingPage />;
   }
 
   return <Layout />;
@@ -65,6 +72,9 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
+        
+        {/* Email verification - accessible without auth */}
+        <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
         {/* Protected routes with Layout */}
         <Route element={<ProtectedLayout />}>
