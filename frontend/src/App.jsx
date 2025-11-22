@@ -8,6 +8,11 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
+import FollowRequestsPage from "./pages/FollowRequestsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import FollowersPage from "./pages/FollowersPage";
 import FollowingPage from "./pages/FollowingPage";
 import SearchPage from "./pages/SearchPage";
@@ -70,7 +75,11 @@ function App() {
           <Route path="/profile/:username/followers" element={<FollowersPage />} />
           <Route path="/profile/:username/following" element={<FollowingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+          <Route path="/follow-requests" element={<FollowRequestsPage />} />
         </Route>
+
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
