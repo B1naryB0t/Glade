@@ -5,8 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
 
 function EmailVerificationPendingPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const [resending, setResending] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -27,6 +28,42 @@ function EmailVerificationPendingPage() {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleRefresh = async () => {
+    setChecking(true);
+    setMessage('');
+    setError('');
+
+    try {
+      // Fetch fresh user data from the API
+      const response = await fetch('/api/v1/auth/settings/', {
+        headers: {
+          'Authorization': `Token ${localStorage.getItem('authToken')}`
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        
+        if (userData.email_verified) {
+          // Update user in context and localStorage
+          updateUser({ email_verified: true });
+          setMessage('Email verified! Redirecting...');
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          setError('Email is not verified yet. Please check your email or contact support.');
+        }
+      } else {
+        setError('Failed to check verification status. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to check verification status. Please try again.');
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -81,6 +118,21 @@ function EmailVerificationPendingPage() {
                 <RefreshCw className="w-4 h-4" />
                 Resend Verification Email
               </>
+            )}
+          </button>
+
+          <button
+            onClick={handleRefresh}
+            disabled={checking}
+            className="w-full mb-3 px-6 py-3 border border-coral text-coral rounded-lg hover:bg-coral/5 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {checking ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Check Verification Status'
             )}
           </button>
 
