@@ -14,9 +14,17 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
   }, [latitude, longitude, onLocationChange]);
 
   const requestBrowserLocation = () => {
+    // Check if geolocation is available
     if (!("geolocation" in navigator)) {
       setStatus("denied");
       setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    // Check if we're on HTTPS (required for geolocation in production)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      setStatus("denied");
+      setError("Browser location requires HTTPS. Please use IP-based location instead.");
       return;
     }
 
@@ -36,12 +44,18 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
         console.error("Geolocation error:", error);
         setStatus("denied");
         if (error.code === 1) {
-          setError("Location access denied.");
+          setError("Location access denied. Please allow location access or use IP-based location.");
         } else if (error.code === 2) {
-          setError("Location unavailable.");
+          setError("Location unavailable. Please try IP-based location.");
+        } else if (error.code === 3) {
+          setError("Location request timed out. Please try IP-based location.");
         } else {
-          setError("Location error.");
+          setError("Location error. Please try IP-based location.");
         }
+      },
+      {
+        timeout: 10000, // 10 second timeout
+        enableHighAccuracy: false
       }
     );
   };
@@ -51,20 +65,25 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
     setError("");
 
     try {
-      const response = await apiClient.get("/api/v1/auth/location/ip/");
+      const response = await apiClient.get("/auth/location/ip/");
       if (response.data.latitude && response.data.longitude) {
         setLatitude(response.data.latitude.toString());
         setLongitude(response.data.longitude.toString());
         setStatus("obtained");
         setError("");
+      } else {
+        throw new Error("No location data received");
       }
     } catch (err) {
       console.error("IP location error:", err);
-      // Fallback to UNC Charlotte location for demo
+      const errorMsg = err.response?.data?.error || err.message;
+      console.log("IP location failed:", errorMsg);
+      
+      // Fallback to UNC Charlotte location
       setLatitude("35.305690");
       setLongitude("-80.732181");
       setStatus("obtained");
-      setError("IP-Based Location Failed: Using 35.305690, -80.732181 (University of North Carolina at Charlotte)");
+      setError(`IP-based location unavailable (${errorMsg}). Using default location: UNC Charlotte`);
     }
   };
 
