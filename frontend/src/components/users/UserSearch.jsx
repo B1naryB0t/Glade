@@ -73,10 +73,15 @@ function UserSearch() {
     };
   }, []);
 
-  const handleUserClick = (userId) => {
-    navigate(`/profile/${userId}`);
+  const handleUserClick = (username) => {
+    navigate(`/profile/${username}`);
     setShowResults(false);
     setQuery('');
+  };
+
+  const handleViewAllResults = () => {
+    navigate(`/search?q=${encodeURIComponent(query)}`);
+    setShowResults(false);
   };
 
   // Direct search on enter key
@@ -96,7 +101,7 @@ function UserSearch() {
 
   return (
     <div className="relative" ref={searchRef}>
-      <div className="flex items-center border border-gray-300 rounded-full bg-white overflow-hidden">
+      <div className="flex items-stretch border border-gray-300 rounded-full bg-white overflow-hidden">
         <input
           ref={inputRef}
           type="text"
@@ -104,12 +109,12 @@ function UserSearch() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Search users..."
-          className="w-full px-4 py-2 focus:outline-none"
+          className="flex-1 px-4 py-2 focus:outline-none bg-transparent"
           onFocus={handleFocus}
         />
         <button
           onClick={handleSearch}
-          className="h-full px-4 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+          className="px-4 bg-[#85993D] text-white hover:bg-[#6b7a31] transition-colors flex items-center justify-center"
           aria-label="Search"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,38 +130,50 @@ function UserSearch() {
 
       {/* Search Results Dropdown */}
       {showResults && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-y-auto">
+        <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl overflow-hidden">
           {loading ? (
             <div className="p-4 text-center">
-              <div className="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-indigo-600 border-r-2 border-indigo-600 border-b-2 border-transparent"></div>
+              <div className="inline-block animate-spin rounded-full h-5 w-5 border-t-2 border-[#85993D] border-r-2 border-[#85993D] border-b-2 border-transparent"></div>
               <span className="ml-2 text-gray-600">Searching...</span>
             </div>
           ) : results.length > 0 ? (
-            <ul>
-              {results.map((user) => (
-                <li
-                  key={user.id}
-                  className="px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
-                  onClick={() => handleUserClick(user.id)}
+            <>
+              <ul>
+                {results.slice(0, 5).map((user, index) => (
+                  <li
+                    key={user.id}
+                    className={`px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors ${
+                      index < 4 || results.length <= 5 ? 'border-b border-gray-100' : ''
+                    }`}
+                    onClick={() => handleUserClick(user.username)}
+                  >
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 flex-shrink-0 bg-[#BBCC42] rounded-full flex items-center justify-center text-[#7A3644] font-medium">
+                        {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                      </div>
+                      <div className="ml-3">
+                        <div className="font-medium">{user.username}</div>
+                        {user.location && (user.location.city || user.location.region) && (
+                          <div className="text-xs text-gray-500">
+                            📍 {user.location.city || ''}
+                            {user.location.city && user.location.region ? ', ' : ''}
+                            {user.location.region || ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {results.length > 5 && (
+                <div
+                  onClick={handleViewAllResults}
+                  className="px-4 py-3 text-center bg-gray-50 hover:bg-gray-100 cursor-pointer border-t border-gray-200 text-[#85993D] font-medium transition-colors"
                 >
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center text-white font-medium">
-                      {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
-                    </div>
-                    <div className="ml-3">
-                      <div className="font-medium">{user.username}</div>
-                      {user.location && (user.location.city || user.location.region) && (
-                        <div className="text-xs text-gray-500">
-                          📍 {user.location.city || ''}
-                          {user.location.city && user.location.region ? ', ' : ''}
-                          {user.location.region || ''}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  View all {results.length} results →
+                </div>
+              )}
+            </>
           ) : query.trim() && searchPerformed ? (
             <div className="p-6 text-center">
               <p className="text-gray-500 mb-1">No users found matching "{query}"</p>

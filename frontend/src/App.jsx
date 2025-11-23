@@ -15,6 +15,7 @@ import FollowRequestsPage from "./pages/FollowRequestsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import FollowersPage from "./pages/FollowersPage";
 import FollowingPage from "./pages/FollowingPage";
+import SearchPage from "./pages/SearchPage";
 import Loading from "./components/common/Loading";
 import "./index.css";
 
@@ -69,6 +70,7 @@ function App() {
         {/* Protected routes with Layout */}
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/profile/:username/followers" element={<FollowersPage />} />
           <Route path="/profile/:username/following" element={<FollowingPage />} />
