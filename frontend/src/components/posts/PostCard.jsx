@@ -202,6 +202,8 @@ function PostCard({ post }) {
                 {isMyPost ? formatRadius(post.location_radius) : 'Nearby'}
               </span>
             </div>
+          )}
+          
           {/* Delete button (only for post author) */}
           {currentUser && post.author?.username === currentUser.username && (
             <button
