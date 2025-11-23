@@ -26,8 +26,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return InputValidationService.validate_username(value)
 
     def create(self, validated_data):
+        from django.contrib.gis.geos import Point
+        from privacy.services import PrivacyService
+        
         validated_data.pop("password_confirm")
         user = User.objects.create_user(**validated_data)
+        
+        # Set default location (UNC Charlotte) with fuzzing applied
+        default_lat = 35.305690
+        default_lng = -80.732181
+        privacy_service = PrivacyService()
+        fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
+            default_lat, default_lng, user.privacy_level
+        )
+        user.approximate_location = Point(fuzzed_lng, fuzzed_lat)
+        user.save(update_fields=['approximate_location'])
+        
         return user
 
 

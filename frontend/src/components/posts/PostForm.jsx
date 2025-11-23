@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { postService } from '../../services/postService';
+import { api } from '../../services/api';
 
 function PostForm({ onPostCreated }) {
   const [content, setContent] = useState('');
@@ -9,6 +10,20 @@ function PostForm({ onPostCreated }) {
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+  const [hasLocation, setHasLocation] = useState(false);
+
+  // Check if user has a location set
+  useEffect(() => {
+    const checkUserLocation = async () => {
+      try {
+        const userSettings = await api.getUserSettings();
+        setHasLocation(userSettings.latitude !== null && userSettings.longitude !== null);
+      } catch (error) {
+        console.error('Error checking user location:', error);
+      }
+    };
+    checkUserLocation();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -165,17 +180,23 @@ function PostForm({ onPostCreated }) {
             {/* Nearby Filter Checkbox - Only show for public/followers */}
             {visibility !== 'private' && (
               <div>
-                <label className="flex items-center cursor-pointer">
+                <label className={`flex items-center ${hasLocation ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                   <input
                     type="checkbox"
                     checked={limitToNearby}
                     onChange={(e) => setLimitToNearby(e.target.checked)}
-                    className="h-4 w-4 text-lime focus:ring-lime border-cream-dark/30 rounded"
+                    disabled={!hasLocation}
+                    className="h-4 w-4 text-lime focus:ring-lime border-cream-dark/30 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <span className="ml-2 text-sm text-burgundy">
                     Also limit to people nearby
                   </span>
                 </label>
+                {!hasLocation && (
+                  <p className="text-xs text-red-600 mt-1 ml-6">
+                    You must set your location in settings to use this feature
+                  </p>
+                )}
               </div>
             )}
 
