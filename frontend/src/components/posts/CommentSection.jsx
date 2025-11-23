@@ -1,12 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../../hooks/useAuth';
 
 function CommentSection({ postId }) {
+  const { user: currentUser } = useAuth();
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showComments, setShowComments] = useState(false);
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      await axios.delete(`/api/v1/posts/comments/${commentId}/delete/`);
+      setComments(comments.filter(c => c.id !== commentId));
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      alert('Failed to delete comment');
+    }
+  };
 
   useEffect(() => {
     if (showComments) {
@@ -81,22 +95,41 @@ function CommentSection({ postId }) {
             </div>
           ) : (
             <div className="mt-3 space-y-3">
-              {comments.map((comment) => (
-                <div key={comment.id} className="p-3 bg-cream rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div className="h-8 w-8 bg-olive rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {comment.user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="ml-2">
-                      <div className="text-sm font-medium">{comment.user.username}</div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {comments.map((comment) => {
+                const username = comment.author?.username || 'Unknown';
+                const displayName = comment.author?.display_name || username;
+                return (
+                  <div key={comment.id} className="p-3 bg-cream rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 bg-olive rounded-full flex items-center justify-center text-white text-sm font-bold">
+                          {username.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="ml-2">
+                          <div className="text-sm font-medium">{displayName}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(comment.created_at).toLocaleDateString()} {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
                       </div>
+                      
+                      {/* Delete button (only for comment author) */}
+                      {currentUser && comment.author?.username === currentUser.username && (
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete comment"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
+                    <div className="text-burgundy">{comment.content}</div>
                   </div>
-                  <div className="text-burgundy">{comment.content}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

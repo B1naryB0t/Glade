@@ -329,27 +329,40 @@ def follow_user(request, username):
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def search_users(request):
-    """Search for users by username or display name"""
+    """Search for users by username with pagination"""
     query = request.query_params.get("q", "").strip()
+    page = int(request.query_params.get("page", 1))
+    page_size = 10
     
     if not query or len(query) < 2:
-        return Response({"results": [], "count": 0})
+        return Response({"results": [], "count": 0, "total": 0, "page": 1, "pages": 0})
     
-    # Search by username or display_name, only public profiles
-    users = User.objects.filter(
+    # Search by username or display_name, respecting privacy levels
+    # Privacy level 1 (Public): searchable by everyone
+    # Privacy level 2 (Local): searchable by local users only
+    # Privacy level 3 (Private): not searchable
+    all_users = User.objects.filter(
         models.Q(username__icontains=query) | 
         models.Q(display_name__icontains=query),
-        privacy_level=1  # Only public profiles are searchable
-    ).exclude(id=request.user.id)[:20]  # Limit to 20 results
+        privacy_level__in=[1, 2]  # Public and Local profiles are searchable
+    ).exclude(id=request.user.id)
     
-    visible_users = []
-    for user in users:
-        # Check if user's privacy allows being found in search
-        # For now, all users are searchable, but you can add privacy checks here
-        visible_users.append(user)
+    total_count = all_users.count()
+    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
     
-    serializer = UserSerializer(visible_users, many=True, context={"request": request})
-    return Response({"results": serializer.data, "count": len(visible_users)})
+    # Paginate results
+    start = (page - 1) * page_size
+    end = start + page_size
+    users = all_users[start:end]
+    
+    serializer = UserSerializer(users, many=True, context={"request": request})
+    return Response({
+        "results": serializer.data,
+        "count": len(serializer.data),
+        "total": total_count,
+        "page": page,
+        "pages": total_pages
+    })
 
 
 @api_view(["GET"])

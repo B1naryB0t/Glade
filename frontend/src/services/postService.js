@@ -62,7 +62,7 @@ export const postService = {
    * @returns {Promise<void>}
    */
   async deletePost(postId) {
-    const response = await apiClient.delete(`/posts/${postId}/`);
+    const response = await apiClient.delete(`/posts/${postId}/delete/`);
     return response.data;
   },
 
@@ -148,12 +148,12 @@ export const postService = {
 
   /**
    * Delete comment
-   * @param {string} postId
    * @param {string} commentId
    * @returns {Promise<void>}
    */
-  async deleteComment(postId, commentId) {
-    await apiClient.delete(`/posts/${postId}/comments/${commentId}/`);
+  async deleteComment(commentId) {
+    const response = await apiClient.delete(`/posts/comments/${commentId}/delete/`);
+    return response.data;
   },
 
   /**

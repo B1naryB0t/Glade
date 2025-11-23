@@ -2,11 +2,17 @@
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
+import ConfirmModal from '../common/ConfirmModal';
 
 function PostCard({ post }) {
+  const { user: currentUser } = useAuth();
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
   // Post state
   const [liked, setLiked] = useState(post?.liked_by_current_user || false);
   const [likeCount, setLikeCount] = useState(post?.likes_count || 0);
+  const [commentCount, setCommentCount] = useState(post?.comments_count || 0);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -36,12 +42,31 @@ function PostCard({ post }) {
   const handleLike = async () => {
     if (!post?.id) return;
 
+    // Optimistic update
+    const previousLiked = liked;
+    const previousCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
+
     try {
-      const result = await api.toggleLike(post.id);
+      let result;
+      if (liked) {
+        // Currently liked, so unlike
+        result = await api.unlikePost(post.id);
+      } else {
+        // Currently not liked, so like
+        result = await api.likePost(post.id);
+      }
+      
+      // Update with server response
       setLiked(result.liked_by_current_user);
       setLikeCount(result.likes_count);
     } catch (error) {
       console.error('Error toggling like:', error);
+      // Rollback on failure
+      setLiked(previousLiked);
+      setLikeCount(previousCount);
+      alert('Failed to update like. Please try again.');
     }
   };
 
@@ -49,12 +74,19 @@ function PostCard({ post }) {
     e.preventDefault();
     if (!post?.id || !newComment.trim()) return;
 
+    // Optimistic update
+    const previousCount = commentCount;
+    setCommentCount(prev => prev + 1);
+
     try {
       await api.addComment(post.id, newComment);
       await loadComments(); // reload comments to prevent duplicates
       setNewComment('');
     } catch (error) {
       console.error('Error adding comment:', error);
+      // Rollback on failure
+      setCommentCount(previousCount);
+      alert('Failed to add comment. Please try again.');
     }
   };
 
@@ -96,8 +128,37 @@ function PostCard({ post }) {
   };
 
   const username = post.author?.username || post.user?.username || 'Unknown';
+  const displayName = post.author?.display_name || post.user?.display_name || username;
   const userId = post.author?.id || post.user?.id || 'unknown';
-  const userInitial = (username[0] || 'U').toUpperCase();
+  const userInitial = (displayName[0] || 'U').toUpperCase();
+
+  const handleDeletePost = async () => {
+    try {
+      await api.deletePost(post.id);
+      window.location.reload(); // Refresh to show updated feed
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post');
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    // Optimistic update
+    const previousCount = commentCount;
+    const previousComments = comments;
+    setCommentCount(prev => Math.max(0, prev - 1));
+    setComments(comments.filter(c => c.id !== commentId));
+
+    try {
+      await api.deleteComment(commentId);
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      // Rollback on failure
+      setCommentCount(previousCount);
+      setComments(previousComments);
+      alert('Failed to delete comment');
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow border border-gray-100 p-5 mb-4">
@@ -109,7 +170,7 @@ function PostCard({ post }) {
             <span className="text-white font-semibold">{userInitial}</span>
           </div>
           <div className="ml-3">
-            <h3 className="font-semibold text-burgundy">{username}</h3>
+            <h3 className="font-semibold text-burgundy">{displayName}</h3>
             <div className="text-xs text-gray-500 flex items-center">
               <span>{getTimeAgo(post.created_at)}</span>
 
@@ -141,6 +202,17 @@ function PostCard({ post }) {
                 {isMyPost ? formatRadius(post.location_radius) : 'Nearby'}
               </span>
             </div>
+          {/* Delete button (only for post author) */}
+          {currentUser && post.author?.username === currentUser.username && (
+            <button
+              onClick={() => setShowDeletePostModal(true)}
+              className="text-red-500 hover:text-red-700 p-1"
+              title="Delete post"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           )}
         </div>
       </div>
@@ -177,7 +249,7 @@ function PostCard({ post }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <span>{showComments ? 'Hide Comments' : 'Comment'}</span>
+            <span>{commentCount}</span>
           </button>
         </div>
       </div>
@@ -191,18 +263,31 @@ function PostCard({ post }) {
             <div className="space-y-3 mb-4">
               {comments.map(comment => (
                 <div key={comment.id} className="p-3 bg-cream rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <Link to={`/profile/${comment.user?.username || 'unknown'}`} className="flex items-center">
+                  <div className="flex items-center justify-between mb-2">
+                    <Link to={`/profile/${comment.author?.username || 'unknown'}`} className="flex items-center">
                       <div className="w-8 h-8 bg-olive rounded-full flex items-center justify-center mr-2">
                         <span className="text-white text-sm">
-                          {(comment.user?.username?.[0] || 'U').toUpperCase()}
+                          {(comment.author?.username?.[0] || 'U').toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">{comment.user?.username || 'Unknown'}</div>
+                        <div className="text-sm font-medium">{comment.author?.display_name || comment.author?.username || 'Unknown'}</div>
                         <div className="text-xs text-gray-500">{getTimeAgo(comment.created_at)}</div>
                       </div>
                     </Link>
+                    
+                    {/* Delete button (only for comment author) */}
+                    {currentUser && comment.author?.username === currentUser.username && (
+                      <button
+                        onClick={() => setCommentToDelete(comment.id)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Delete comment"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   <p className="text-burgundy">{comment.content}</p>
                 </div>
@@ -236,6 +321,26 @@ function PostCard({ post }) {
           </form>
         </div>
       )}
+
+      {/* Delete Post Modal */}
+      <ConfirmModal
+        isOpen={showDeletePostModal}
+        onClose={() => setShowDeletePostModal(false)}
+        onConfirm={handleDeletePost}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+      />
+
+      {/* Delete Comment Modal */}
+      <ConfirmModal
+        isOpen={commentToDelete !== null}
+        onClose={() => setCommentToDelete(null)}
+        onConfirm={() => handleDeleteComment(commentToDelete)}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+      />
     </div>
   );
 }
