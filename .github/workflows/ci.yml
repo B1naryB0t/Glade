@@ -1,0 +1,76 @@
+name: CI - Tests
+
+on:
+  pull_request:
+    branches: [main, production]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_DB: glade_test
+          POSTGRES_USER: glade
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install GDAL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gdal-bin libgdal-dev
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip cache purge
+          pip install -r backend/requirements/base.txt
+          pip install -r backend/requirements/development.txt
+          pip uninstall -y django-privacy
+      
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://glade:test_password@localhost:5432/glade_test
+          SECRET_KEY: test-secret-key
+          DEBUG: "True"
+        run: |
+          cd backend
+          python manage.py test
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+      
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+      
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --run
