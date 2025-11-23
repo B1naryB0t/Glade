@@ -90,13 +90,13 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
           Location {required && "*"}
         </label>
         
-        {status === "idle" && (
+        {(status === "idle" || status === "obtained") && (
           <button
             type="button"
             onClick={requestBrowserLocation}
             className="text-sm text-indigo-600 hover:text-indigo-800"
           >
-            Get My Location
+            {status === "obtained" ? "Update Location" : "Get My Location"}
           </button>
         )}
       </div>
