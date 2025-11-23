@@ -33,6 +33,21 @@ class PostCreateSerializer(serializers.ModelSerializer):
         if isinstance(value, str):
             return visibility_map.get(value.lower(), 1)
         return value
+    
+    def validate_nearby_radius_meters(self, value):
+        """Validate nearby radius is within acceptable range"""
+        if value is None:
+            return value
+        
+        from django.conf import settings
+        max_radius = getattr(settings, 'MAX_LOCATION_RADIUS', 50000)
+        
+        if value < 0:
+            raise serializers.ValidationError("Radius cannot be negative")
+        if value > max_radius:
+            raise serializers.ValidationError(f"Radius cannot exceed {max_radius} meters")
+        
+        return value
 
     def create(self, validated_data):
         request = self.context.get("request")
