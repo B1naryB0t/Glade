@@ -22,6 +22,7 @@ function PostForm({ onPostCreated }) {
       setError('Post content must be under 5000 characters');
       return;
     }
+    if (!content.trim() || isPosting) return; // Prevent double submission
 
     try {
       setIsPosting(true);
@@ -40,10 +41,12 @@ function PostForm({ onPostCreated }) {
 
       const newPost = await postService.createPost(postData);
 
+      // Clear content immediately after successful post
+      setContent('');
+
       if (onPostCreated) {
         onPostCreated(newPost);
       }
-
       // Reset form
       setContent('');
       setVisibility('public');
