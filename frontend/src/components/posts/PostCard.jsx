@@ -18,23 +18,6 @@ function PostCard({ post }) {
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // User settings state
-  const [settings, setSettings] = useState(null);
-
-  // Load user settings once
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const s = await api.getUserSettings();
-        setSettings(s);
-      } catch (error) {
-        console.error('Failed to load user settings for post:', error);
-      }
-    };
-
-    loadSettings();
-  }, []);
-
   // Load comments only when expanded
   useEffect(() => {
     if (showComments) {
@@ -109,33 +92,31 @@ function PostCard({ post }) {
 
   if (!post) return null;
 
-  // -------------------------------
-  // 🔥 OVERRIDES ONLY APPLY TO CURRENT USER'S OWN POSTS
-  // -------------------------------
-  const isMyPost = settings && post.user?.id === settings.id;
+  const finalVisibility = post.visibility;
+  const finalCity = post.city;
+  const finalRegion = post.region;
+  const isMyPost = post.author?.username === (post.user?.username || '');
 
-  const finalVisibility = isMyPost
-    ? settings?.default_post_privacy || post.visibility
-    : post.visibility;
-
-  const finalCity = isMyPost
-    ? settings?.location?.city || post.city
-    : post.city;
-
-  const finalRegion = isMyPost
-    ? settings?.location?.region || post.region
-    : post.region;
-
-  // Visibility label + icon
+  // Visibility label + icon (backend returns integers: 1=public, 2=local, 3=followers, 4=private)
   const getVisibilityInfo = () => {
-    switch (finalVisibility) {
-      case 'private': return { label: 'Private', icon: '🔒' };
-      case 'followers': return { label: 'Followers', icon: '👥' };
-      default: return { label: 'Public', icon: '🌎' };
-    }
+    const vis = finalVisibility;
+    
+    if (vis === 4 || vis === 'private') return { label: 'Private', icon: '🔒' };
+    if (vis === 3 || vis === 'followers') return { label: 'Followers', icon: '👥' };
+    if (vis === 2 || vis === 'local') return { label: 'Nearby', icon: '📍' };
+    return { label: 'Public', icon: '🌎' };
   };
 
   const visibilityInfo = getVisibilityInfo();
+
+  // Format radius for display (convert meters to miles)
+  const formatRadius = (meters) => {
+    const miles = meters / 1609.34;
+    if (miles < 0.1) {
+      return `${Math.round(miles * 5280)} ft`;
+    }
+    return `${miles.toFixed(1)} mi`;
+  };
 
   const getTimeAgo = (dateString) => {
     if (!dateString) return 'recently';
@@ -206,13 +187,21 @@ function PostCard({ post }) {
           </div>
         </Link>
 
+        {/* Visibility badges */}
         <div className="flex items-center gap-2">
-          {/* Visibility badge */}
           <div className="flex items-center text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full">
             <span className="mr-1">{visibilityInfo.icon}</span>
             <span className="font-medium">{visibilityInfo.label}</span>
           </div>
           
+          {/* Show radius badge if location-based */}
+          {post.location_radius && (
+            <div className="flex items-center text-xs bg-blue-100 text-blue-900 px-3 py-1 rounded-full">
+              <span className="mr-1">📍</span>
+              <span className="font-medium">
+                {isMyPost ? formatRadius(post.location_radius) : 'Nearby'}
+              </span>
+            </div>
           {/* Delete button (only for post author) */}
           {currentUser && post.author?.username === currentUser.username && (
             <button

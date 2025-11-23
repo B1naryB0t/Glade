@@ -20,6 +20,7 @@ from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -471,6 +472,55 @@ def get_following(request, username):
     
     return Response({"results": following_data, "count": len(following_data)}, status=200)
 
+@api_view(["GET"])
+@permission_classes([permissions.IsAuthenticated])
+def get_ip_location(request):
+    """Get approximate location from IP address"""
+    import requests
+    
+    ip_address = SessionManagementService.get_client_ip(request)
+    
+    # Skip for localhost
+    if ip_address in ['127.0.0.1', 'localhost', '::1']:
+        return Response(
+            {"error": "Cannot geolocate localhost"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    try:
+        # Using ip-api.com free tier (no API key needed)
+        response = requests.get(
+            f"http://ip-api.com/json/{ip_address}",
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            if data.get('status') == 'success':
+                return Response(
+                    {
+                        "latitude": data.get('lat'),
+                        "longitude": data.get('lon'),
+                        "city": data.get('city'),
+                        "region": data.get('regionName'),
+                        "country": data.get('country'),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+        
+        return Response(
+            {"error": "Unable to determine location from IP"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except requests.RequestException as e:
+        logger.error(f"IP geolocation request failed: {e}")
+        return Response(
+            {"error": "Geolocation service unavailable"},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+
 @api_view(["GET", "PUT"])
 @permission_classes([permissions.IsAuthenticated])
 def user_settings(request):
@@ -481,12 +531,20 @@ def user_settings(request):
         # Return user settings mapped to frontend expectations
         privacy_map = {1: 'public', 2: 'local', 3: 'followers', 4: 'private'}
         
+        # Extract lat/lng from approximate_location if it exists
+        latitude = None
+        longitude = None
+        if user.approximate_location:
+            longitude = user.approximate_location.x
+            latitude = user.approximate_location.y
+        
         return Response({
             "username": user.username,
             "email": user.email,
             "email_verified": user.email_verified,
             "bio": user.bio or "",
-            "location": {"city": "", "region": ""},  # TODO: Add actual location fields
+            "latitude": latitude,
+            "longitude": longitude,
             "profile_visibility": privacy_map.get(user.privacy_level, 'public'),
             "default_post_privacy": 'public',  # TODO: Add to user model
             "email_notifications": True,  # TODO: Get from notification preferences
@@ -495,6 +553,7 @@ def user_settings(request):
     
     elif request.method == "PUT":
         # Update user settings
+        from django.contrib.gis.geos import Point
         data = request.data
         
         if "display_name" in data:
@@ -505,6 +564,20 @@ def user_settings(request):
             user.privacy_level = data["privacy_level"]
         if "location_privacy_radius" in data:
             user.location_privacy_radius = data["location_privacy_radius"]
+        
+        # Update location if provided
+        if "latitude" in data and "longitude" in data:
+            lat = data["latitude"]
+            lng = data["longitude"]
+            if lat is not None and lng is not None:
+                from privacy.services import PrivacyService
+                privacy_service = PrivacyService()
+                fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
+                    lat, lng, user.privacy_level
+                )
+                user.approximate_location = Point(fuzzed_lng, fuzzed_lat)
+            else:
+                user.approximate_location = None
         
         user.save()
         

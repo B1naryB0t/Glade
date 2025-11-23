@@ -10,38 +10,62 @@ class PostCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating posts"""
 
     location = serializers.JSONField(required=False, allow_null=True)
+    nearby_radius_meters = serializers.IntegerField(required=False, allow_null=True)
+    visibility = serializers.CharField()  # Accept string, convert in validate_visibility
 
     class Meta:
         model = Post
-        fields = ["content", "content_warning", "visibility", "local_only", "location"]
+        fields = ["content", "content_warning", "visibility", "local_only", "location", "nearby_radius_meters"]
 
     def validate_content(self, value):
         """Validate and sanitize post content"""
         from services.validation_service import InputValidationService
         return InputValidationService.validate_post_content(value)
+    
+    def validate_visibility(self, value):
+        """Convert string visibility to integer"""
+        visibility_map = {
+            'public': 1,
+            'local': 2,
+            'followers': 3,
+            'private': 4,
+        }
+        if isinstance(value, str):
+            return visibility_map.get(value.lower(), 1)
+        return value
+    
+    def validate_nearby_radius_meters(self, value):
+        """Validate nearby radius is within acceptable range"""
+        if value is None:
+            return value
+        
+        from django.conf import settings
+        max_radius = getattr(settings, 'MAX_LOCATION_RADIUS', 50000)
+        
+        if value < 0:
+            raise serializers.ValidationError("Radius cannot be negative")
+        if value > max_radius:
+            raise serializers.ValidationError(f"Radius cannot exceed {max_radius} meters")
+        
+        return value
 
     def create(self, validated_data):
         request = self.context.get("request")
         user = request.user
 
-        # Handle location privacy
-        location_data = validated_data.pop("location", None)
+        nearby_radius = validated_data.pop("nearby_radius_meters", None)
+        validated_data.pop("location", None)  # Remove unused location field
         location_point = None
 
-        if location_data and isinstance(location_data, dict):
-            lat = location_data.get("latitude")
-            lng = location_data.get("longitude")
-
-            if lat is not None and lng is not None:
-                # Apply privacy fuzzing
-                privacy_service = PrivacyService()
-                fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
-                    lat, lng, user.privacy_level
-                )
-                location_point = Point(fuzzed_lng, fuzzed_lat)
+        # If nearby radius is set, use user's stored location (already fuzzed)
+        if nearby_radius and user.approximate_location:
+            location_point = user.approximate_location
 
         post = Post.objects.create(
-            author=user, location=location_point, **validated_data
+            author=user, 
+            location=location_point,
+            location_radius=nearby_radius,
+            **validated_data
         )
 
         return post
@@ -56,6 +80,7 @@ class PostSerializer(serializers.ModelSerializer):
     replies_count = serializers.SerializerMethodField()
     liked_by_current_user = serializers.SerializerMethodField()
     location_name = serializers.SerializerMethodField()
+    location_radius = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Post
@@ -67,6 +92,7 @@ class PostSerializer(serializers.ModelSerializer):
             "visibility",
             "local_only",
             "location_name",
+            "location_radius",
             "created_at",
             "updated_at",
             "likes_count",

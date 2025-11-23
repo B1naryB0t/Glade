@@ -26,16 +26,32 @@ class PostListCreateView(generics.ListCreateAPIView):
         return PostSerializer
 
     def get_queryset(self):
+        from django.db.models import Q
+        
         user = self.request.user
+        privacy_service = PrivacyService()
         
         # Simplified: Show all public posts and posts from users you follow
         # TODO: Add back location-based filtering later
         queryset = Post.objects.select_related("author").prefetch_related("likes", "comments")
         
-        # Show public posts (visibility=1) or posts from followed users
-        return queryset.filter(
-            visibility=1  # Public posts only for now
-        ).order_by("-created_at")
+        # Build base visibility filter
+        visibility_filter = Q(visibility=1)  # Public posts
+        visibility_filter |= Q(author=user)  # Own posts
+        
+        # Add followers-only posts
+        following_ids = user.following.filter(accepted=True).values_list('following_id', flat=True)
+        visibility_filter |= Q(visibility=3, author_id__in=following_ids)
+        
+        queryset = queryset.filter(visibility_filter)
+        
+        # Filter by privacy rules (handles location radius per post)
+        visible_post_ids = []
+        for post in queryset:
+            if privacy_service.can_user_see_post(user, post):
+                visible_post_ids.append(post.id)
+        
+        return Post.objects.filter(id__in=visible_post_ids).select_related("author").prefetch_related("likes").order_by("-created_at")
 
     def create(self, request, *args, **kwargs):
         # Check rate limit
