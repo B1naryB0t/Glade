@@ -213,7 +213,7 @@ class GladeAdmin:
     def delete_user(self, username):
         """Delete a user"""
         self.cursor.execute('''
-            SELECT username, email, created_at,
+            SELECT id, username, email, created_at,
                    (SELECT COUNT(*) FROM posts_post WHERE author_id = accounts_user.id) as post_count
             FROM accounts_user
             WHERE username = %s
@@ -232,9 +232,44 @@ class GladeAdmin:
         confirm = input(f'\nAre you sure you want to delete {username}? (yes/no): ')
         
         if confirm.lower() == 'yes':
-            self.cursor.execute('DELETE FROM accounts_user WHERE username = %s', (username,))
+            user_id = user['id']
+            
+            # Delete related records first to avoid foreign key violations
+            print('Deleting related records...')
+            
+            # List of tables to clean up (table_name, column_name)
+            cleanup_tables = [
+                ('accounts_emailverificationtoken', 'user_id'),
+                ('accounts_loginattempt', 'user_id'),
+                ('accounts_securityevent', 'user_id'),
+                ('posts_post', 'author_id'),
+                ('notifications_notificationpreference', 'user_id'),
+                ('authtoken_token', 'user_id'),
+            ]
+            
+            for table, column in cleanup_tables:
+                try:
+                    self.cursor.execute(f'DELETE FROM {table} WHERE {column} = %s', (user_id,))
+                except Exception as e:
+                    print(f'  Warning: Could not delete from {table}: {e}')
+            
+            # Delete follows (both as follower and following)
+            try:
+                self.cursor.execute('DELETE FROM accounts_follow WHERE follower_id = %s OR following_id = %s', (user_id, user_id))
+            except Exception as e:
+                print(f'  Warning: Could not delete follows: {e}')
+            
+            # Delete notifications (both as recipient and actor)
+            try:
+                self.cursor.execute('DELETE FROM notifications_notification WHERE recipient_id = %s OR actor_id = %s', (user_id, user_id))
+            except Exception as e:
+                print(f'  Warning: Could not delete notifications: {e}')
+            
+            # Finally delete the user
+            self.cursor.execute('DELETE FROM accounts_user WHERE id = %s', (user_id,))
+            
             self.conn.commit()
-            print(f'\n✓ User {username} deleted successfully')
+            print(f'\n✓ User {username} and all related data deleted successfully')
         else:
             print('\nDeletion cancelled')
 
@@ -330,6 +365,39 @@ class GladeAdmin:
             print(f'   Last Active: {row["last_active_at"].strftime("%Y-%m-%d %H:%M") if row["last_active_at"] else "Never"}')
             print(f'   Posts: {row["post_count"]} | Following: {row["following_count"]} | Followers: {row["followers_count"]}')
 
+    def verify_user_email(self, username):
+        """Manually verify a user's email"""
+        self.cursor.execute('''
+            SELECT id, username, email, email_verified
+            FROM accounts_user
+            WHERE username = %s
+        ''', (username,))
+        
+        user = self.cursor.fetchone()
+        if not user:
+            print(f'\n✗ User {username} not found')
+            return
+        
+        print(f'\nUser: {user["username"]}')
+        print(f'Email: {user["email"]}')
+        print(f'Currently Verified: {"Yes ✓" if user["email_verified"] else "No ✗"}')
+        
+        if user["email_verified"]:
+            print('\n⚠️  Email is already verified')
+            return
+        
+        confirm = input(f'\nVerify email for {username}? (yes/no): ')
+        
+        if confirm.lower() == 'yes':
+            self.cursor.execute(
+                'UPDATE accounts_user SET email_verified = true WHERE id = %s',
+                (user['id'],)
+            )
+            self.conn.commit()
+            print(f'\n✓ Email verified for {username}')
+        else:
+            print('\nVerification cancelled')
+
     def interactive_mode(self):
         """Interactive dashboard mode"""
         while True:
@@ -345,12 +413,13 @@ class GladeAdmin:
             print('  [3] 🟢 Show Active Users')
             print('  [4] 🔍 Search User')
             print('  [5] 🗑️  Delete User')
-            print('  [6] 🚨 Suspicious Activity')
-            print('  [7] 📋 Quick Summary')
+            print('  [6] ✉️  Verify User Email')
+            print('  [7] 🚨 Suspicious Activity')
+            print('  [8] 📋 Quick Summary')
             print('  [0] 🚪 Exit')
             print('\n' + '-'*60)
             
-            choice = input('\n👉 Select option (0-7): ').strip()
+            choice = input('\n👉 Select option (0-8): ').strip()
             
             print('\n' + '='*60 + '\n')
             
@@ -373,14 +442,20 @@ class GladeAdmin:
                 else:
                     print('❌ Username cannot be empty')
             elif choice == '6':
-                self.show_suspicious_activity()
+                username = input('Enter username to verify: ').strip()
+                if username:
+                    self.verify_user_email(username)
+                else:
+                    print('❌ Username cannot be empty')
             elif choice == '7':
+                self.show_suspicious_activity()
+            elif choice == '8':
                 self.quick_summary()
             elif choice == '0':
                 print('\n👋 Goodbye!\n')
                 break
             else:
-                print('❌ Invalid option. Please select 0-7.')
+                print('❌ Invalid option. Please select 0-8.')
             
             input('\n📌 Press Enter to continue...')
 

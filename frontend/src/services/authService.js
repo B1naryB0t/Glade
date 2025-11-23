@@ -213,9 +213,8 @@ export const authService = {
       return response.data;
     } catch (error) {
       console.error("AuthService: Failed to resend verification email", error);
-      throw new Error(
-        error.response?.data?.message || "Failed to resend verification email",
-      );
+      // Re-throw the original error so the component can access response data
+      throw error;
     }
   },
 

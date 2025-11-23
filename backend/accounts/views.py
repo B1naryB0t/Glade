@@ -9,14 +9,14 @@ from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from .serializers import (
     UserProfileSerializer,
     UserRegistrationSerializer,
     UserSerializer,
 )
-from .throttles import RegistrationRateThrottle
+from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
@@ -167,8 +167,20 @@ def verify_email(request, token):
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
 def resend_verification_email(request):
-    """Resend verification email"""
+    """Resend verification email with rate limiting"""
+    from django.core.cache import cache
+    from datetime import datetime
+    
     user = request.user
+    cache_key = f"resend_verification_{user.id}"
+    
+    # Check if user has recently requested a resend
+    last_request = cache.get(cache_key)
+    if last_request:
+        return Response(
+            {"error": "Please wait 5 minutes before requesting another verification email."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
 
     # The analyzer can't guarantee 'email_verified' exists on the user model,
     # so use getattr with a safe default.
@@ -180,6 +192,10 @@ def resend_verification_email(request):
     # Catch the same set of expected email/network exceptions only.
     try:
         EmailVerificationService.send_verification_email(user)
+        
+        # Set cache for 5 minutes (300 seconds)
+        cache.set(cache_key, datetime.now().isoformat(), 300)
+        
         return Response(
             {"message": "Verification email sent"}, status=status.HTTP_200_OK
         )
@@ -468,6 +484,7 @@ def user_settings(request):
         return Response({
             "username": user.username,
             "email": user.email,
+            "email_verified": user.email_verified,
             "bio": user.bio or "",
             "location": {"city": "", "region": ""},  # TODO: Add actual location fields
             "profile_visibility": privacy_map.get(user.privacy_level, 'public'),
