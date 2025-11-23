@@ -1,7 +1,9 @@
 import { apiClient } from './apiClient';
+import axios from 'axios';
 
 export const searchRemoteUser = async (handle) => {
-  const response = await apiClient.get(`/.well-known/webfinger?resource=acct:${handle.replace('@', '')}`);
+  // Use axios directly to avoid /api/v1 prefix
+  const response = await axios.get(`/.well-known/webfinger?resource=acct:${handle.replace('@', '')}`);
   return response.data;
 };
 

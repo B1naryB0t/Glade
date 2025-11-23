@@ -86,13 +86,15 @@ class User(AbstractUser):
 
     def to_activitypub_actor(self):
         """Convert user to ActivityPub Actor object"""
+        # Use current INSTANCE_DOMAIN instead of saved actor_uri for consistency
+        actor_uri = f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}"
         return {
             "@context": [
                 "https://www.w3.org/ns/activitystreams",
                 "https://w3id.org/security/v1",
             ],
             "type": "Person",
-            "id": self.actor_uri,
+            "id": actor_uri,
             "preferredUsername": self.username,
             "name": self.display_name or self.username,
             "summary": self.bio,
@@ -101,8 +103,8 @@ class User(AbstractUser):
             "followers": f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}/followers",
             "following": f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}/following",
             "publicKey": {
-                "id": f"{self.actor_uri}#main-key",
-                "owner": self.actor_uri,
+                "id": f"{actor_uri}#main-key",
+                "owner": actor_uri,
                 "publicKeyPem": self.public_key,
             },
             "endpoints": {"sharedInbox": f"https://{settings.INSTANCE_DOMAIN}/inbox"},

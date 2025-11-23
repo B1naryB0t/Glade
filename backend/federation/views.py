@@ -37,6 +37,9 @@ def webfinger(request):
 
     user = get_object_or_404(User, username=username)
 
+    # Use current INSTANCE_DOMAIN instead of saved actor_uri
+    actor_uri = f"https://{settings.INSTANCE_DOMAIN}/users/{username}"
+
     return JsonResponse(
         {
             "subject": resource,
@@ -44,7 +47,7 @@ def webfinger(request):
                 {
                     "rel": "self",
                     "type": "application/activity+json",
-                    "href": user.actor_uri,
+                    "href": actor_uri,
                 }
             ],
         },
@@ -52,7 +55,7 @@ def webfinger(request):
     )
 
 
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "HEAD"])
 def actor_view(request, username):
     """Return ActivityPub Actor object"""
     user = get_object_or_404(User, username=username)
@@ -63,8 +66,22 @@ def actor_view(request, username):
         "application/activity+json" not in accept
         and "application/ld+json" not in accept
     ):
-        # Return HTML profile page for browsers
-        return HttpResponse(f"{user.display_name or user.username}ActivityPub actor")
+        # Return HTML profile page for browsers with proper ActivityPub link
+        actor_url = f"https://{settings.INSTANCE_DOMAIN}/users/{username}"
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{user.display_name or user.username} - Glade</title>
+    <link rel="alternate" type="application/activity+json" href="{actor_url}">
+</head>
+<body>
+    <h1>{user.display_name or user.username}</h1>
+    <p>@{user.username}@{settings.INSTANCE_DOMAIN}</p>
+    <p>{user.bio or 'ActivityPub actor'}</p>
+</body>
+</html>"""
+        return HttpResponse(html)
 
     return JsonResponse(
         user.to_activitypub_actor(), content_type="application/activity+json"
@@ -303,3 +320,28 @@ def _verify_signature(request) -> bool:
         logger.warning(f"Signature verification failed: {reason}")
 
     return valid
+
+
+
+def instance_info(request):
+    """Mastodon-compatible instance info endpoint (v1 and v2)"""
+    from accounts.models import User
+    
+    return JsonResponse({
+        "uri": settings.INSTANCE_DOMAIN,
+        "title": settings.INSTANCE_NAME,
+        "short_description": settings.INSTANCE_DESCRIPTION,
+        "description": settings.INSTANCE_DESCRIPTION,
+        "version": "4.2.0 (compatible; Glade 0.1.0)",
+        "registrations": True,
+        "approval_required": False,
+        "invites_enabled": False,
+        "stats": {
+            "user_count": User.objects.count(),
+            "status_count": Post.objects.count(),
+            "domain_count": 1
+        },
+        "thumbnail": None,
+        "languages": ["en"],
+        "contact_account": None
+    })
