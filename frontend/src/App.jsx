@@ -19,6 +19,8 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import EmailVerificationPendingPage from "./pages/EmailVerificationPendingPage";
 import SearchPage from "./pages/SearchPage";
 import Loading from "./components/common/Loading";
+import FederatedFeed from "./pages/FederatedFeed";
+import WebFingerSearch from "./components/WebFingerSearch";
 import "./index.css";
 
 // Protected Layout - combines auth check with layout
@@ -73,7 +75,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Route>
-        
+
         {/* Email verification - accessible without auth */}
         <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
@@ -81,15 +83,25 @@ function App() {
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/federated" element={<FederatedFeed />} />
+          <Route path="/discover" element={<WebFingerSearch />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
-          <Route path="/profile/:username/followers" element={<FollowersPage />} />
-          <Route path="/profile/:username/following" element={<FollowingPage />} />
+          <Route
+            path="/profile/:username/followers"
+            element={<FollowersPage />}
+          />
+          <Route
+            path="/profile/:username/following"
+            element={<FollowingPage />}
+          />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
+          <Route
+            path="/notifications/settings"
+            element={<NotificationSettingsPage />}
+          />
           <Route path="/follow-requests" element={<FollowRequestsPage />} />
         </Route>
-
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
