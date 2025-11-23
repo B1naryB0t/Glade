@@ -15,7 +15,6 @@ class RemoteInstance(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     domain = models.CharField(max_length=255, unique=True)
-    # mastodon, pleroma, glade, etc.
     software = models.CharField(max_length=50, blank=True)
     version = models.CharField(max_length=20, blank=True)
     trust_level = models.IntegerField(choices=TRUST_LEVELS, default=1)
@@ -34,6 +33,9 @@ class RemoteInstance(models.Model):
 
     class Meta:
         ordering = ["domain"]
+
+    def __str__(self):
+        return self.domain
 
 
 class RemoteUser(models.Model):
@@ -61,6 +63,9 @@ class RemoteUser(models.Model):
     class Meta:
         unique_together = ("instance", "username")
 
+    def __str__(self):
+        return self.actor_uri
+
 
 class Activity(models.Model):
     """Log ActivityPub activities for debugging"""
@@ -74,6 +79,8 @@ class Activity(models.Model):
         ("Reject", "Reject"),
         ("Like", "Like"),
         ("Undo", "Undo"),
+        ("Announce", "Announce"),
+        ("Unknown", "Unknown"),
     ]
 
     DIRECTIONS = [
@@ -82,13 +89,14 @@ class Activity(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    activity_id = models.URLField(unique=True)
+    activity_id = models.CharField(max_length=1024, unique=True)
     activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
     direction = models.CharField(max_length=10, choices=DIRECTIONS)
 
     # Related objects
     actor_uri = models.URLField()
     object_uri = models.URLField(blank=True)
+    target = models.URLField(blank=True)  # For outbound: target inbox URL
 
     # Raw data
     raw_activity = models.JSONField()
@@ -101,3 +109,11 @@ class Activity(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["direction", "-created_at"]),
+            models.Index(fields=["activity_type", "direction"]),
+            models.Index(fields=["processed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.activity_type} ({self.direction}) - {self.activity_id}"

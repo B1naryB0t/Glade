@@ -1,12 +1,72 @@
 # backend/federation/tasks.py
+"""
+Celery tasks for ActivityPub delivery
+"""
+import json
+import logging
+
+import httpx
 from accounts.models import Follow, User
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from django.conf import settings
 from posts.models import Post
 
-from .models import RemoteUser
+from .models import Activity, RemoteUser
 from .services import ActivityPubService
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, max_retries=5, autoretry_for=(Exception,), retry_backoff=True)
+def deliver_activity(self, activity_dict: dict, inboxes: list):
+    """
+    Deliver an activity to multiple remote inboxes.
+    Uses ActivityPubService for signing and delivery.
+    """
+    try:
+        actor_uri = activity_dict.get("actor")
+        activity_id = activity_dict.get("id")
+
+        # Find local user for signing
+        try:
+            # Extract username from actor URI
+            username = actor_uri.rstrip("/").split("/")[-1]
+            local_user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            logger.error(f"Local user not found for actor {actor_uri}")
+            return
+
+        # Use ActivityPubService to send
+        ap_service = ActivityPubService()
+        success_count = 0
+        failed_inboxes = []
+
+        for inbox in inboxes:
+            try:
+                success = async_to_sync(ap_service.send_activity)(
+                    local_user, activity_dict, inbox
+                )
+                if success:
+                    success_count += 1
+                else:
+                    failed_inboxes.append(inbox)
+            except Exception as e:
+                logger.error(f"Failed to deliver to {inbox}: {e}")
+                failed_inboxes.append(inbox)
+
+        logger.info(
+            f"Delivered activity {activity_id} to {success_count}/{len(inboxes)} inboxes"
+        )
+
+        # Retry failed inboxes
+        if failed_inboxes and self.request.retries < self.max_retries:
+            raise Exception(
+                f"Failed to deliver to {len(failed_inboxes)} inboxes")
+
+    except Exception as exc:
+        logger.exception("deliver_activity error")
+        raise self.retry(exc=exc)
 
 
 @shared_task
@@ -25,7 +85,6 @@ def federate_post(post_id: str, activity_type: str = "Create"):
             return
 
         # Create ActivityPub activity
-        activitypub = ActivityPubService()
         note = post.to_activitypub_note()
         activity = {
             "@context": "https://www.w3.org/ns/activitystreams",
@@ -39,31 +98,112 @@ def federate_post(post_id: str, activity_type: str = "Create"):
         # Get target inboxes
         target_inboxes = get_federation_targets(author, post)
 
-        # Send to all targets
-        success_count = 0
-        for inbox_url in target_inboxes:
-            try:
-                success = async_to_sync(activitypub.send_activity)(
-                    author, activity, inbox_url
-                )
-                if success:
-                    success_count += 1
-            except Exception as e:
-                print(f"Failed to federate to {inbox_url}: {e}")
+        if target_inboxes:
+            # Queue delivery task
+            deliver_activity.delay(activity, target_inboxes)
 
-        print(
-            f"Federated post {post.id} to {success_count}/{len(target_inboxes)} inboxes"
+        logger.info(
+            f"Queued post {post.id} for federation to {len(target_inboxes)} inboxes"
         )
 
     except Post.DoesNotExist:
-        print(f"Post {post_id} not found")
+        logger.error(f"Post {post_id} not found")
     except Exception as e:
-        print(f"Federation error: {e}")
+        logger.exception(f"Federation error: {e}")
+
+
+@shared_task
+def federate_follow(follow_id: str):
+    """Send Follow activity to remote user"""
+    try:
+        follow = Follow.objects.get(id=follow_id)
+
+        # Only federate if following a remote user
+        if not hasattr(follow.following, "actor_uri"):
+            return
+
+        if follow.following.actor_uri.startswith(f"https://{settings.INSTANCE_DOMAIN}"):
+            return
+
+        # Create Follow activity
+        activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "type": "Follow",
+            "id": f"https://{settings.INSTANCE_DOMAIN}/activities/follow/{follow.id}",
+            "actor": follow.follower.actor_uri,
+            "object": follow.following.actor_uri,
+        }
+
+        # Get target inbox
+        remote_user = RemoteUser.objects.filter(
+            actor_uri=follow.following.actor_uri
+        ).first()
+
+        if remote_user and remote_user.inbox_url:
+            deliver_activity.delay(activity, [remote_user.inbox_url])
+            logger.info(f"Queued follow {follow.id} for federation")
+
+    except Follow.DoesNotExist:
+        logger.error(f"Follow {follow_id} not found")
+    except Exception as e:
+        logger.exception(f"Follow federation error: {e}")
+
+
+@shared_task
+def federate_like(like_id: str):
+    """Send Like activity to remote server"""
+    from posts.models import Like
+
+    try:
+        like = Like.objects.get(id=like_id)
+        post = like.post
+
+        # Only federate likes on federated posts
+        if not post.federated_id:
+            return
+
+        activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            "type": "Like",
+            "id": f"https://{settings.INSTANCE_DOMAIN}/activities/like/{like.id}",
+            "actor": like.user.actor_uri,
+            "object": post.activity_id,
+        }
+
+        # Send to post author's inbox
+        if post.author.actor_uri and not post.author.actor_uri.startswith(
+            f"https://{settings.INSTANCE_DOMAIN}"
+        ):
+            remote_user = RemoteUser.objects.filter(
+                actor_uri=post.author.actor_uri
+            ).first()
+            if remote_user and remote_user.inbox_url:
+                deliver_activity.delay(activity, [remote_user.inbox_url])
+
+    except Like.DoesNotExist:
+        logger.error(f"Like {like_id} not found")
+
+
+@shared_task
+def federate_delete(
+    activity_id: str, object_uri: str, actor_uri: str, target_inboxes: list
+):
+    """Send Delete activity"""
+    activity = {
+        "@context": "https://www.w3.org/ns/activitystreams",
+        "type": "Delete",
+        "id": activity_id,
+        "actor": actor_uri,
+        "object": object_uri,
+    }
+
+    if target_inboxes:
+        deliver_activity.delay(activity, target_inboxes)
 
 
 def get_federation_targets(author: User, post: Post) -> list:
     """Get list of inbox URLs to federate to"""
-    inboxes = []
+    inboxes = set()
 
     # 1. Author's followers
     follower_inboxes = (
@@ -71,19 +211,17 @@ def get_federation_targets(author: User, post: Post) -> list:
         .exclude(follower__actor_uri__startswith=f"https://{settings.INSTANCE_DOMAIN}")
         .values_list("follower__inbox_url", flat=True)
     )
-    inboxes.extend(follower_inboxes)
+    inboxes.update(follower_inboxes)
 
-    # 2. For local/public posts, add nearby Glade instances
-    if post.location and post.visibility in [1, 2]:  # Public or Local
-        nearby_inboxes = get_nearby_instance_inboxes(post)
-        inboxes.extend(nearby_inboxes)
+    # 2. If replying to a federated post, include original author
+    if post.reply_to and post.reply_to.federated_id:
+        remote_author = RemoteUser.objects.filter(
+            actor_uri=post.reply_to.author.actor_uri
+        ).first()
+        if remote_author and remote_author.inbox_url:
+            inboxes.add(remote_author.inbox_url)
 
-    # Remove duplicates and return
-    return list(set(inboxes))
+    # 3. For location-based posts, could add nearby instances
+    # TODO: Implement geospatial federation discovery
 
-
-def get_nearby_instance_inboxes(post: Post) -> list:
-    """Get inboxes of Glade instances with users near the post location"""
-    # This would implement geospatial queries to find nearby instances
-    # For now, return empty list
-    return []
+    return list(inboxes)
