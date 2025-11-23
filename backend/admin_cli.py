@@ -237,12 +237,52 @@ class GladeAdmin:
             # Delete related records first to avoid foreign key violations
             print('Deleting related records...')
             
-            # List of tables to clean up (table_name, column_name)
+            # First, get all post IDs for this user
+            self.cursor.execute('SELECT id FROM posts_post WHERE author_id = %s', (user_id,))
+            post_ids = [row['id'] for row in self.cursor.fetchall()]
+            
+            # Delete post-related data (likes, comments) before deleting posts
+            if post_ids:
+                post_ids_tuple = tuple(post_ids)
+                try:
+                    # Delete likes on user's posts
+                    self.cursor.execute('DELETE FROM posts_like WHERE post_id = ANY(%s)', (post_ids,))
+                    print(f'  Deleted likes on user posts')
+                except Exception as e:
+                    print(f'  Warning: Could not delete post likes: {e}')
+                
+                try:
+                    # Delete comments on user's posts
+                    self.cursor.execute('DELETE FROM posts_comment WHERE post_id = ANY(%s)', (post_ids,))
+                    print(f'  Deleted comments on user posts')
+                except Exception as e:
+                    print(f'  Warning: Could not delete post comments: {e}')
+            
+            # Delete user's own likes and comments on other posts
+            try:
+                self.cursor.execute('DELETE FROM posts_like WHERE user_id = %s', (user_id,))
+                print(f'  Deleted user likes')
+            except Exception as e:
+                print(f'  Warning: Could not delete user likes: {e}')
+            
+            try:
+                self.cursor.execute('DELETE FROM posts_comment WHERE author_id = %s', (user_id,))
+                print(f'  Deleted user comments')
+            except Exception as e:
+                print(f'  Warning: Could not delete user comments: {e}')
+            
+            # Now delete posts (after likes and comments are gone)
+            try:
+                self.cursor.execute('DELETE FROM posts_post WHERE author_id = %s', (user_id,))
+                print(f'  Deleted user posts')
+            except Exception as e:
+                print(f'  Warning: Could not delete posts: {e}')
+            
+            # Delete other user-related records
             cleanup_tables = [
                 ('accounts_emailverificationtoken', 'user_id'),
                 ('accounts_loginattempt', 'user_id'),
                 ('accounts_securityevent', 'user_id'),
-                ('posts_post', 'author_id'),
                 ('notifications_notificationpreference', 'user_id'),
                 ('authtoken_token', 'user_id'),
             ]
@@ -256,12 +296,14 @@ class GladeAdmin:
             # Delete follows (both as follower and following)
             try:
                 self.cursor.execute('DELETE FROM accounts_follow WHERE follower_id = %s OR following_id = %s', (user_id, user_id))
+                print(f'  Deleted follows')
             except Exception as e:
                 print(f'  Warning: Could not delete follows: {e}')
             
             # Delete notifications (both as recipient and actor)
             try:
                 self.cursor.execute('DELETE FROM notifications_notification WHERE recipient_id = %s OR actor_id = %s', (user_id, user_id))
+                print(f'  Deleted notifications')
             except Exception as e:
                 print(f'  Warning: Could not delete notifications: {e}')
             
