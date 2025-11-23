@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import { apiClient } from './apiClient';
 
 export const searchRemoteUser = async (handle) => {
   const response = await apiClient.get(`/.well-known/webfinger?resource=acct:${handle.replace('@', '')}`);

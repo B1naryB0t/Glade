@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
 import FollowRequestsBadge from './FollowRequestsBadge';
+import Sidebar from './Sidebar';
 
 function Layout() {
   const { user, logout } = useAuth();

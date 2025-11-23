@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Globe, RefreshCw } from 'lucide-react';
 import { getFederatedFeed } from '../services/federationService';
-import PostCard from '../components/PostCard';
+import PostCard from '../components/posts/PostCard';
 
 export default function FederatedFeed() {
   const [posts, setPosts] = useState([]);

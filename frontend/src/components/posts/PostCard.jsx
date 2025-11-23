@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import ConfirmModal from "../common/ConfirmModal";
-import FederatedPostIndicator from "./FederatedPostIndicator";
+import FederatedPostIndicator from "../FederatedPostIndicator";
 
 function PostCard({ post, onDelete }) {
   const { user: currentUser } = useAuth();

@@ -232,10 +232,10 @@ CSRF_COOKIE_HTTPONLY = True
 # }
 
 
-# Apend to INSTALLED_APPS
-INSTALLED_APPS += [
-    "activitypub",
-]
+# ActivityPub app removed - using 'federation' app instead
+# INSTALLED_APPS += [
+#     "activitypub",
+# ]
 
 # Feature flag for ActivityPub (default off)
 ACTIVITYPUB_ENABLED = os.environ.get("ACTIVITYPUB_ENABLED", "false").lower() in (
