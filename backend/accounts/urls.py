@@ -26,5 +26,4 @@ urlpatterns = [
     path("profile/<str:username>/following/", views.get_following, name="get-following"),
     path("settings/", views.user_settings, name="user-settings"),
     path("location/ip/", views.get_ip_location, name="get-ip-location"),
-    path("location/update/", views.update_location, name="update-location"),
 ]

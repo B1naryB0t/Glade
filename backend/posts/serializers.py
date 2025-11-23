@@ -38,36 +38,13 @@ class PostCreateSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = request.user
 
-        # Handle location privacy
-        location_data = validated_data.pop("location", None)
         nearby_radius = validated_data.pop("nearby_radius_meters", None)
+        validated_data.pop("location", None)  # Remove unused location field
         location_point = None
 
-        # If nearby radius is set, use user's current location
-        if nearby_radius:
-            if user.approximate_location:
-                # Use user's stored location (already fuzzed)
-                location_point = user.approximate_location
-            elif location_data and isinstance(location_data, dict):
-                # Fall back to provided location
-                lat = location_data.get("latitude")
-                lng = location_data.get("longitude")
-                if lat is not None and lng is not None:
-                    privacy_service = PrivacyService()
-                    fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
-                        lat, lng, user.privacy_level
-                    )
-                    location_point = Point(fuzzed_lng, fuzzed_lat)
-        elif location_data and isinstance(location_data, dict):
-            # Explicit location provided
-            lat = location_data.get("latitude")
-            lng = location_data.get("longitude")
-            if lat is not None and lng is not None:
-                privacy_service = PrivacyService()
-                fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
-                    lat, lng, user.privacy_level
-                )
-                location_point = Point(fuzzed_lng, fuzzed_lat)
+        # If nearby radius is set, use user's stored location (already fuzzed)
+        if nearby_radius and user.approximate_location:
+            location_point = user.approximate_location
 
         post = Post.objects.create(
             author=user, 

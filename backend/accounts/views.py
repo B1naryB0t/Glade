@@ -508,58 +508,6 @@ def get_ip_location(request):
         )
 
 
-@api_view(["POST"])
-@permission_classes([permissions.IsAuthenticated])
-def update_location(request):
-    """Update user location with privacy fuzzing"""
-    from django.contrib.gis.geos import Point
-    from privacy.services import PrivacyService
-    
-    user = request.user
-    latitude = request.data.get('latitude')
-    longitude = request.data.get('longitude')
-    
-    if not latitude or not longitude:
-        return Response(
-            {"error": "Latitude and longitude are required"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    
-    try:
-        lat = float(latitude)
-        lng = float(longitude)
-        
-        # Validate ranges
-        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-            return Response(
-                {"error": "Invalid coordinates"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        
-        # Apply privacy fuzzing
-        privacy_level = user.privacy_level or 2
-        fuzzed_lat, fuzzed_lng = PrivacyService.apply_location_privacy(
-            lat, lng, privacy_level
-        )
-        
-        # Save as PostGIS Point (longitude first for PostGIS)
-        user.approximate_location = Point(fuzzed_lng, fuzzed_lat, srid=4326)
-        user.save(update_fields=['approximate_location'])
-        
-        return Response(
-            {
-                "message": "Location updated successfully",
-                "fuzzed": True,
-            },
-            status=status.HTTP_200_OK,
-        )
-    except (ValueError, TypeError) as e:
-        return Response(
-            {"error": "Invalid coordinate format"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-
 @api_view(["GET", "PUT"])
 @permission_classes([permissions.IsAuthenticated])
 def user_settings(request):
@@ -609,7 +557,12 @@ def user_settings(request):
             lat = data["latitude"]
             lng = data["longitude"]
             if lat is not None and lng is not None:
-                user.approximate_location = Point(lng, lat)
+                from privacy.services import PrivacyService
+                privacy_service = PrivacyService()
+                fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
+                    lat, lng, user.privacy_level
+                )
+                user.approximate_location = Point(fuzzed_lng, fuzzed_lat)
             else:
                 user.approximate_location = None
         
