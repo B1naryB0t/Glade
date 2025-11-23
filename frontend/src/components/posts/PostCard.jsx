@@ -95,7 +95,7 @@ function PostCard({ post }) {
   const finalVisibility = post.visibility;
   const finalCity = post.city;
   const finalRegion = post.region;
-  const isMyPost = post.author?.username === (post.user?.username || '');
+  const isMyPost = currentUser && post.author?.username === currentUser.username;
 
   // Visibility label + icon (backend returns integers: 1=public, 2=local, 3=followers, 4=private)
   const getVisibilityInfo = () => {
@@ -112,10 +112,7 @@ function PostCard({ post }) {
   // Format radius for display (convert meters to miles)
   const formatRadius = (meters) => {
     const miles = meters / 1609.34;
-    if (miles < 0.1) {
-      return `${Math.round(miles * 5280)} ft`;
-    }
-    return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles)} mi`;
   };
 
   const getTimeAgo = (dateString) => {

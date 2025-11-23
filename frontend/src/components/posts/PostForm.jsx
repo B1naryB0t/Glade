@@ -5,7 +5,7 @@ function PostForm({ onPostCreated }) {
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState('public');
   const [limitToNearby, setLimitToNearby] = useState(false);
-  const [nearbyRadius, setNearbyRadius] = useState(0.5); // in miles
+  const [nearbyRadius, setNearbyRadius] = useState(1); // in miles
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
@@ -52,7 +52,7 @@ function PostForm({ onPostCreated }) {
       setContent('');
       setVisibility('public');
       setLimitToNearby(false);
-      setNearbyRadius(0.5);
+      setNearbyRadius(1);
       setError(null);
       setShowPrivacySettings(false);
     } catch (error) {
@@ -69,10 +69,7 @@ function PostForm({ onPostCreated }) {
 
   // Format radius for display
   const formatRadius = (miles) => {
-    if (miles < 0.1) {
-      return `${Math.round(miles * 5280)} ft`;
-    }
-    return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles)} mi`;
   };
 
   // Get privacy badge info (matching PostCard styling)
@@ -190,15 +187,15 @@ function PostForm({ onPostCreated }) {
                 </label>
                 <input
                   type="range"
-                  min="0.05"
+                  min="1"
                   max="30"
-                  step="0.05"
+                  step="1"
                   value={nearbyRadius}
-                  onChange={(e) => setNearbyRadius(parseFloat(e.target.value))}
+                  onChange={(e) => setNearbyRadius(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-lime"
                 />
                 <div className="flex justify-between text-xs text-olive mt-1">
-                  <span>250 ft</span>
+                  <span>1 mi</span>
                   <span>30 mi</span>
                 </div>
               </div>
