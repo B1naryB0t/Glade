@@ -1,7 +1,7 @@
 import React from 'react';
 import PostCard from './PostCard';
 
-function Feed({ posts, isLoading, error }) {
+function Feed({ posts, isLoading, error, onDeletePost }) {
   
   if (isLoading) {
     return (
@@ -53,7 +53,7 @@ function Feed({ posts, isLoading, error }) {
   return (
     <div className="space-y-4">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard key={post.id} post={post} onDelete={onDeletePost} />
       ))}
     </div>
   );

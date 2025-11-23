@@ -59,6 +59,21 @@ function HomePage() {
 		});
 	};
 
+	// Handle post deletion
+	const handlePostDeleted = (postId) => {
+		queryClient.setQueryData(["posts"], (old) => {
+			if (!old || !old.pages) return old;
+			
+			const newPages = old.pages.map(page => ({
+				...page,
+				results: (page?.results || []).filter(post => post.id !== postId),
+				count: (page?.count || 0) - 1
+			}));
+			
+			return { ...old, pages: newPages };
+		});
+	};
+
 	if (!isAuthenticated) {
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
@@ -96,7 +111,7 @@ function HomePage() {
 
 				<PostForm onPostCreated={handlePostCreated} />
 
-				<Feed posts={allPosts} isLoading={isLoading} error={error?.message} />
+				<Feed posts={allPosts} isLoading={isLoading} error={error?.message} onDeletePost={handlePostDeleted} />
 
 				{/* Load More Button */}
 				{hasNextPage && !isFetchingNextPage && (

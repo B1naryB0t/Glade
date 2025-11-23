@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import ConfirmModal from '../common/ConfirmModal';
 
-function PostCard({ post }) {
+function PostCard({ post, onDelete }) {
   const { user: currentUser } = useAuth();
   const [showDeletePostModal, setShowDeletePostModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
@@ -132,10 +132,14 @@ function PostCard({ post }) {
   const handleDeletePost = async () => {
     try {
       await api.deletePost(post.id);
-      window.location.reload(); // Refresh to show updated feed
+      setShowDeletePostModal(false);
+      if (onDelete) {
+        onDelete(post.id);
+      }
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Failed to delete post');
+      setShowDeletePostModal(false);
+      alert('Failed to delete post. Please try again.');
     }
   };
 
