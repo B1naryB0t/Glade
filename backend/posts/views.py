@@ -30,7 +30,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         
         # Simplified: Show all public posts and posts from users you follow
         # TODO: Add back location-based filtering later
-        queryset = Post.objects.select_related("author").prefetch_related("likes")
+        queryset = Post.objects.select_related("author").prefetch_related("likes", "comments")
         
         # Show public posts (visibility=1) or posts from followed users
         return queryset.filter(
@@ -122,18 +122,26 @@ def like_post(request, post_id):
             # Create notification for post author
             NotificationService.notify_post_like(post, request.user)
 
-            # TODO: Federate like activity
-            return Response({"liked": True}, status=201)
-        return Response({"liked": True}, status=200)
+        # TODO: Federate like activity
+        likes_count = post.likes.count()
+        return Response({
+            "liked_by_current_user": True,
+            "likes_count": likes_count
+        }, status=201 if created else 200)
 
     else:  # DELETE
         try:
             like = Like.objects.get(user=request.user, post=post)
             like.delete()
             # TODO: Federate undo like activity
-            return Response({"liked": False}, status=200)
         except Like.DoesNotExist:
-            return Response({"liked": False}, status=200)
+            pass
+        
+        likes_count = post.likes.count()
+        return Response({
+            "liked_by_current_user": False,
+            "likes_count": likes_count
+        }, status=200)
 
 
 @api_view(["POST"])
@@ -184,9 +192,45 @@ def post_comments(request, post_id):
     elif request.method == "POST":
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(author=request.user, post=post)
-            return Response(serializer.data, status=201)
+            comment = serializer.save(author=request.user, post=post)
+            # Re-serialize to include the author data
+            response_serializer = CommentSerializer(comment)
+            return Response(response_serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def delete_post(request, post_id):
+    """Delete a post (only by author)"""
+    try:
+        post = Post.objects.get(id=post_id)
+    except Post.DoesNotExist:
+        return Response({"error": "Post not found"}, status=404)
+
+    # Only author can delete their post
+    if post.author != request.user:
+        return Response({"error": "You can only delete your own posts"}, status=403)
+
+    post.delete()
+    return Response({"message": "Post deleted successfully"}, status=200)
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def delete_comment(request, comment_id):
+    """Delete a comment (only by author)"""
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return Response({"error": "Comment not found"}, status=404)
+
+    # Only author can delete their comment
+    if comment.author != request.user:
+        return Response({"error": "You can only delete your own comments"}, status=403)
+
+    comment.delete()
+    return Response({"message": "Comment deleted successfully"}, status=200)
 
 
 

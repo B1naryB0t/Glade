@@ -145,6 +145,24 @@ export const api = {
   },
 
   /**
+   * Like a post
+   * @param {string} postId
+   * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}
+   */
+  async likePost(postId) {
+    return await postService.likePost(postId);
+  },
+
+  /**
+   * Unlike a post
+   * @param {string} postId
+   * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}
+   */
+  async unlikePost(postId) {
+    return await postService.unlikePost(postId);
+  },
+
+  /**
    * Toggle like on post
    * @param {string} postId
    * @returns {Promise<{liked_by_current_user: boolean, likes_count: number}>}
@@ -188,12 +206,11 @@ export const api = {
 
   /**
    * Delete comment
-   * @param {string} postId
    * @param {string} commentId
    * @returns {Promise<void>}
    */
-  async deleteComment(postId, commentId) {
-    return await postService.deleteComment(postId, commentId);
+  async deleteComment(commentId) {
+    return await postService.deleteComment(commentId);
   },
 
   // --------------------------------------------------------------------------
