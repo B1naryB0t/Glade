@@ -17,7 +17,7 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
     // Check if geolocation is available
     if (!("geolocation" in navigator)) {
       setStatus("denied");
-      setError("Geolocation is not supported by your browser");
+      setError("Geolocation is not supported by your browser. Please use IP-based location.");
       return;
     }
 
@@ -43,14 +43,21 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
       (error) => {
         console.error("Geolocation error:", error);
         setStatus("denied");
-        if (error.code === 1) {
-          setError("Location access denied. Please allow location access or use IP-based location.");
-        } else if (error.code === 2) {
+        
+        // Handle empty error object (browser blocking)
+        if (!error.code && !error.message) {
+          setError("Browser location is blocked. Please enable location services in your browser/system settings, or use IP-based location.");
+          return;
+        }
+        
+        if (error.code === 1 || error.code === error.PERMISSION_DENIED) {
+          setError("Location access denied. Please allow location access in your browser settings or use IP-based location.");
+        } else if (error.code === 2 || error.code === error.POSITION_UNAVAILABLE) {
           setError("Location unavailable. Please try IP-based location.");
-        } else if (error.code === 3) {
+        } else if (error.code === 3 || error.code === error.TIMEOUT) {
           setError("Location request timed out. Please try IP-based location.");
         } else {
-          setError("Location error. Please try IP-based location.");
+          setError("Browser location not available. Please use IP-based location.");
         }
       },
       {
@@ -112,7 +119,10 @@ function LocationPicker({ onLocationChange, initialLat, initialLng, required = f
         {(status === "idle" || status === "obtained") && (
           <button
             type="button"
-            onClick={requestBrowserLocation}
+            onClick={(e) => {
+              e.preventDefault();
+              requestBrowserLocation();
+            }}
             className="text-sm text-indigo-600 hover:text-indigo-800"
           >
             {status === "obtained" ? "Update Location" : "Get My Location"}
