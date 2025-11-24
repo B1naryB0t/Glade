@@ -237,7 +237,16 @@ function PostCard({ post, onDelete }) {
 
       {/* Content */}
       <div className="mb-4">
-        <p className="text-burgundy whitespace-pre-wrap">{post.content}</p>
+        {post.activity_id ? (
+          // Federated post with HTML content
+          <div 
+            className="text-burgundy prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
+        ) : (
+          // Local post with plain text
+          <p className="text-burgundy whitespace-pre-wrap">{post.content}</p>
+        )}
       </div>
 
       {/* Actions */}
