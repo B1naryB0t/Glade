@@ -144,7 +144,6 @@ if [ $PORT_RETRY -eq $MAX_PORT_RETRIES ]; then
     aws ec2 terminate-instances --region $REGION --instance-ids $GREEN_INSTANCE_ID
     exit 1
 fi
-fi
 
 # Now try SSH authentication
 echo -e "${BLUE}🔐 Testing SSH authentication...${NC}"
