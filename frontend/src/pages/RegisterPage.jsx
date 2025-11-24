@@ -33,6 +33,29 @@ function RegisterPage() {
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: "" });
     }
+    // Clear submit error when user starts typing
+    if (errors.submit) {
+      setErrors({ ...errors, submit: "" });
+    }
+  };
+
+  const formatThrottleError = (errorMessage) => {
+    // Check if this is a throttling error
+    if (errorMessage.toLowerCase().includes("throttle")) {
+      // Extract seconds if available
+      const match = errorMessage.match(/(\d+)\s*seconds?/i);
+      if (match) {
+        const seconds = parseInt(match[1]);
+        const minutes = Math.floor(seconds / 60);
+
+        if (minutes > 0) {
+          return `Too many registration attempts. Please try again in about ${minutes} minute${minutes > 1 ? "s" : ""}.`;
+        }
+        return `Too many registration attempts. Please try again in ${seconds} seconds.`;
+      }
+      return "Too many registration attempts. Please wait a few minutes and try again.";
+    }
+    return errorMessage;
   };
 
   const validateForm = () => {
@@ -74,15 +97,16 @@ function RegisterPage() {
 
       console.log("RegisterPage: Registration result", result);
 
-      // Registration successful - user state will update and useEffect will redirect
-      // Or show success message
-      if (result.success) {
-        // Navigation will happen via useEffect when user is set
+      if (!result.success && result.error) {
+        setErrors({
+          submit: formatThrottleError(result.error),
+        });
       }
     } catch (error) {
       console.error("RegisterPage: Registration error:", error);
+      const errorMessage = error.message || "An unexpected error occurred";
       setErrors({
-        submit: error.message || "An unexpected error occurred",
+        submit: formatThrottleError(errorMessage),
       });
     }
   };
@@ -103,7 +127,7 @@ function RegisterPage() {
           Or{" "}
           <Link
             to="/login"
-            className="font-medium"
+            className="font-medium hover:underline"
             style={{ color: "#B8CC42" }}
           >
             sign in to your existing account
@@ -122,8 +146,22 @@ function RegisterPage() {
                 className="rounded-md p-4"
                 style={{ backgroundColor: "#7A3644" }}
               >
-                <div className="text-sm" style={{ color: "#FFE3AB" }}>
-                  {errors.submit}
+                <div className="flex items-start">
+                  <svg
+                    className="h-5 w-5 flex-shrink-0 mr-2"
+                    style={{ color: "#FFE3AB" }}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="text-sm" style={{ color: "#FFE3AB" }}>
+                    {errors.submit}
+                  </div>
                 </div>
               </div>
             )}
@@ -133,8 +171,22 @@ function RegisterPage() {
                 className="rounded-md p-4"
                 style={{ backgroundColor: "#7A3644" }}
               >
-                <div className="text-sm" style={{ color: "#FFE3AB" }}>
-                  {error.message || "An error occurred"}
+                <div className="flex items-start">
+                  <svg
+                    className="h-5 w-5 flex-shrink-0 mr-2"
+                    style={{ color: "#FFE3AB" }}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <div className="text-sm" style={{ color: "#FFE3AB" }}>
+                    {formatThrottleError(error.message || "An error occurred")}
+                  </div>
                 </div>
               </div>
             )}
@@ -165,7 +217,7 @@ function RegisterPage() {
                       value={formData[field]}
                       onChange={handleChange}
                       disabled={isLoading}
-                      className="appearance-none block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm"
+                      className="appearance-none block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#B8CC42]"
                       style={{
                         borderColor: errors[field] ? "#7A3644" : "#B8CC42",
                         backgroundColor: "#FFE3AB",
@@ -187,7 +239,7 @@ function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium hover:opacity-90 transition-opacity"
                 style={{
                   backgroundColor: "#B8CC42",
                   color: "#7A3644",

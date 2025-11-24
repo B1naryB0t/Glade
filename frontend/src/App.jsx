@@ -79,6 +79,10 @@ function App() {
         {/* Email verification - accessible without auth */}
         <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
+        {/* Password reset routes - accessible to anyone */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
         {/* Protected routes with Layout */}
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />
