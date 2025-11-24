@@ -3,6 +3,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
+import pytz
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
@@ -29,7 +30,12 @@ class User(AbstractUser):
     privacy_level = models.IntegerField(choices=PRIVACY_CHOICES, default=2)
     location_privacy_radius = models.IntegerField(default=1000)  # meters
     approximate_location = models.PointField(srid=4326, blank=True, null=True)
-
+    timezone = models.CharField(
+        max_length=50,
+        default="UTC",
+        choices=[(tz, tz) for tz in pytz.common_timezones],
+        help_text="User's preferred timezone for displaying dates and times",
+    )
     # Federation
     federation_enabled = models.BooleanField(default=True)
     actor_uri = models.URLField(blank=True)
@@ -62,13 +68,19 @@ class User(AbstractUser):
                 self.display_name
             )[:100]
         if self.bio:
-            self.bio = InputValidationService.sanitize_plain_text(self.bio)[:500]
+            self.bio = InputValidationService.sanitize_plain_text(self.bio)[
+                :500]
 
         super().save(*args, **kwargs)
 
+    def get_timezone(self):
+        """Get user's timezone as a pytz timezone object"""
+        return pytz.timezone(self.timezone)
+
     def _generate_keypair(self):
         """Generate RSA keypair for ActivityPub signatures"""
-        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        private_key = rsa.generate_private_key(
+            public_exponent=65537, key_size=2048)
 
         # Serialize private key
         self.private_key = private_key.private_bytes(
