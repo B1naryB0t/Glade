@@ -5,17 +5,23 @@ DEBUG = True
 
 # Allow ngrok domain from environment variable
 NGROK_DOMAIN = config('NGROK_DOMAIN', default='')
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
-if NGROK_DOMAIN:
+# Check if ALLOWED_HOSTS is set in environment, otherwise use defaults
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0', cast=lambda v: [h.strip() for h in v.split(',')])
+# Also add NGROK_DOMAIN if set separately
+if NGROK_DOMAIN and NGROK_DOMAIN not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(NGROK_DOMAIN)
 
 # CORS settings for development
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-if NGROK_DOMAIN:
-    CORS_ALLOWED_ORIGINS.append(f"https://{NGROK_DOMAIN}")
+CORS_ALLOWED_ORIGINS_ENV = config('CORS_ALLOWED_ORIGINS', default='', cast=lambda v: [o.strip() for o in v.split(',') if o.strip()])
+if CORS_ALLOWED_ORIGINS_ENV:
+    CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS_ENV
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    if NGROK_DOMAIN:
+        CORS_ALLOWED_ORIGINS.append(f"https://{NGROK_DOMAIN}")
 
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development
 

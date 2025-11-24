@@ -354,8 +354,12 @@ def upload_avatar(request):
 @permission_classes([permissions.IsAuthenticated])
 def follow_user_by_uri(request):
     """Follow a user by actor URI (for remote users with slashes in URI)"""
+    logger.info(f"follow_user_by_uri called by user {request.user.username}")
+    logger.info(f"Request data: {request.data}")
+    
     actor_uri = request.data.get("actor_uri")
     if not actor_uri:
+        logger.warning("No actor_uri provided in request")
         return Response({"error": "actor_uri required"}, status=400)
 
     # Delegate to federation service for remote users
@@ -363,30 +367,18 @@ def follow_user_by_uri(request):
     from federation.services import ActivityPubService
 
     try:
+        logger.info(f"Attempting to follow remote user: {actor_uri}")
         ap_service = ActivityPubService()
-        result = async_to_sync(ap_service.follow_remote_user)(request.user, actor_uri)
+        
+        # Use async_to_sync with force_new_loop to avoid conflicts with Celery
+        from asgiref.sync import async_to_sync
+        result = async_to_sync(ap_service.follow_remote_user, force_new_loop=True)(request.user, actor_uri)
+        
+        logger.info(f"Follow successful: {result}")
         return Response(result, status=201)
     except Exception as e:
+        logger.exception(f"Error in follow_user_by_uri for actor_uri={actor_uri}: {e}")
         return Response({"error": str(e)}, status=500)
-
-
-@api_view(["POST", "DELETE"])
-@permission_classes([permissions.IsAuthenticated])
-def follow_user(request, username):
-    """Follow or unfollow a user (local or remote)"""
-    # Try local user first
-    try:
-        target_user = User.objects.get(username=username)
-        is_remote = False
-    except User.DoesNotExist:
-        # Not a local user - treat as remote
-        is_remote = True
-        target_user = None
-
-    if not is_remote:
-        # Local user follow logic
-        if target_user == request.user:
-            return Response({"error": "Cannot follow yourself"}, status=400)
 
 
 @api_view(["POST", "DELETE"])

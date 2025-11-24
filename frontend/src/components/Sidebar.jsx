@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Globe,
   Search,
+  Server,
 } from "lucide-react";
 
 const navigation = [

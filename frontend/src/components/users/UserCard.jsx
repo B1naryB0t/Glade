@@ -40,51 +40,52 @@ function UserCard({ user, showFollowButton = true }) {
 							<p className="text-xs text-gray-400 mt-1">📍 {user.location}</p>
 						)}
 					</div>
-
-					{/* Follow Button */}
-					{showFollowButton && (
-						<div className="ml-4">
-							<FollowButton
-								userId={user.id}
-								username={user.username}
-								initialFollowing={user.isFollowing || false}
-							/>
-						</div>
-					)}
 				</div>
 
-				{/* Stats */}
-				{(user.followers_count !== undefined ||
-					user.posts_count !== undefined) && (
-						<div className="flex items-center space-x-4 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
-							{user.posts_count !== undefined && (
-								<span>
-									<span className="font-semibold text-gray-900">
-										{user.posts_count}
-									</span>{" "}
-									posts
-								</span>
-							)}
-							{user.followers_count !== undefined && (
-								<span>
-									<span className="font-semibold text-gray-900">
-										{user.followers_count}
-									</span>{" "}
-									followers
-								</span>
-							)}
-							{user.following_count !== undefined && (
-								<span>
-									<span className="font-semibold text-gray-900">
-										{user.following_count}
-									</span>{" "}
-									following
-								</span>
-							)}
-						</div>
-					)}
+				{/* Follow Button */}
+				{showFollowButton && (
+					<div className="ml-4">
+						<FollowButton
+							userId={user.id}
+							username={user.username}
+							initialFollowing={user.isFollowing || false}
+						/>
+					</div>
+				)}
 			</div>
-			);
+
+			{/* Stats */}
+			{(user.followers_count !== undefined ||
+				user.posts_count !== undefined) && (
+				<div className="flex items-center space-x-4 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
+					{user.posts_count !== undefined && (
+						<span>
+							<span className="font-semibold text-gray-900">
+								{user.posts_count}
+							</span>{" "}
+							posts
+						</span>
+					)}
+					{user.followers_count !== undefined && (
+						<span>
+							<span className="font-semibold text-gray-900">
+								{user.followers_count}
+							</span>{" "}
+							followers
+						</span>
+					)}
+					{user.following_count !== undefined && (
+						<span>
+							<span className="font-semibold text-gray-900">
+								{user.following_count}
+							</span>{" "}
+							following
+						</span>
+					)}
+				</div>
+			)}
+		</div>
+	);
 }
 
-			export default UserCard;
+export default UserCard;
