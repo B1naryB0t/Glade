@@ -187,8 +187,23 @@ if ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$G
         exit 1
     fi
     
-    echo "🔄 Pulling latest code..."
+    echo "🔄 Checking application directory..."
     cd ~/app
+    
+    # Verify compose file exists
+    if [ ! -f infrastructure/docker/docker-compose.prod.yml ]; then
+        echo "❌ docker-compose.prod.yml not found!"
+        ls -la infrastructure/docker/ || echo "infrastructure/docker directory not found"
+        exit 1
+    fi
+    
+    # Verify .env file exists
+    if [ ! -f .env ]; then
+        echo "❌ .env file not found!"
+        exit 1
+    fi
+    
+    echo "🔄 Pulling latest code..."
     git pull origin main || {
         echo "⚠️  Git pull failed, using existing code from AMI"
     }
@@ -197,10 +212,17 @@ if ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$G
     sudo systemctl start docker || echo "Docker already running"
     
     echo "🐳 Building and starting containers..."
+    cd ~/app
     docker compose -f infrastructure/docker/docker-compose.prod.yml --env-file .env up -d --build --remove-orphans
     
     echo "⏳ Waiting for services to be healthy..."
     sleep 30
+    
+    echo "🔄 Running database migrations..."
+    docker compose -f infrastructure/docker/docker-compose.prod.yml --env-file .env exec backend python manage.py migrate || echo "⚠️  Migrations skipped"
+    
+    echo "📊 Collecting static files..."
+    docker compose -f infrastructure/docker/docker-compose.prod.yml --env-file .env exec backend python manage.py collectstatic --noinput || echo "⚠️  Static files collection skipped"
     
     # Basic health check
     if curl -f http://localhost:80 > /dev/null 2>&1; then
