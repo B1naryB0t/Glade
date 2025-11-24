@@ -1,5 +1,6 @@
 # backend/posts/urls.py
-from django.urls import path
+from django.contrib import admin
+from django.urls import include, path
 
 from . import views
 
@@ -12,4 +13,5 @@ urlpatterns = [
     path("<uuid:post_id>/delete/", views.delete_post, name="delete-post"),
     path("comments/<uuid:comment_id>/delete/", views.delete_comment, name="delete-comment"),
     path("upload-image/", views.upload_post_image, name="upload-post-image"),
+    path("", include("federation.urls")),
 ]
