@@ -78,26 +78,37 @@ def sign_request(
     Produce headers: Date, Digest, Signature for an outbound HTTP request.
     Returns headers dict to attach to the request.
     """
-    digest = digest_payload(body or b"")
     headers = {
         "(request-target)": f"{method.lower()} {path}",
         "host": host,
         "date": date,
-        "digest": digest,
     }
+    
+    # Only include digest for requests with body (POST, PUT, etc.)
+    result_headers = {
+        "Date": date,
+    }
+    
+    if body:
+        digest = digest_payload(body)
+        headers["digest"] = digest
+        result_headers["Digest"] = digest
+        headers_list = "(request-target) host date digest"
+    else:
+        headers_list = "(request-target) host date"
+    
     signing_string = build_signing_string(headers)
     signature_b64 = sign_bytes_rsa(private_key_pem, signing_string)
+    
     sig_header = (
         f'keyId="{key_id}",'
         f'algorithm="rsa-sha256",'
-        f'headers="(request-target) host date digest",'
+        f'headers="{headers_list}",'
         f'signature="{signature_b64}"'
     )
-    return {
-        "Date": date,
-        "Digest": digest,
-        "Signature": sig_header,
-    }
+    result_headers["Signature"] = sig_header
+    
+    return result_headers
 
 
 def verify_request_signature(
@@ -130,26 +141,34 @@ def verify_request_signature(
 
     key_id = parts.get("keyId")
     signature_b64 = parts.get("signature")
+    headers_list = parts.get("headers", "(request-target) host date").split()
+    
     if not key_id or not signature_b64:
         return False, "invalid signature header"
 
-    # Build signing string
+    # Build signing string using the headers specified in the signature
     headers_to_use = {}
-    headers_to_use["(request-target)"] = f"{method.lower()} {path}"
+    
+    for header_name in headers_list:
+        if header_name == "(request-target)":
+            headers_to_use["(request-target)"] = f"{method.lower()} {path}"
+        else:
+            # Look up the header value (case-insensitive)
+            header_value = request_headers.get(header_name.lower())
+            if header_value:
+                headers_to_use[header_name.lower()] = header_value
+            else:
+                # Header specified in signature but not present in request
+                logger.warning(f"Header '{header_name}' specified in signature but not found in request")
 
-    host = request_headers.get("host") or request_headers.get("Host")
-    if host:
-        headers_to_use["host"] = host
-
-    date = request_headers.get("date") or request_headers.get("Date")
-    if date:
-        headers_to_use["date"] = date
-
-    digest = request_headers.get("digest") or request_headers.get("Digest")
-    if digest:
-        headers_to_use["digest"] = digest
-
-    signing_string = build_signing_string(headers_to_use)
+    # Build signing string in the order specified
+    signing_parts = []
+    for header_name in headers_list:
+        header_key = header_name.lower()
+        if header_key in headers_to_use:
+            signing_parts.append(f"{header_key}: {headers_to_use[header_key]}")
+    
+    signing_string = "\n".join(signing_parts).encode("utf-8")
 
     # Get public key
     public_key_pem = public_key_lookup_fn(key_id)

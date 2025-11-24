@@ -59,15 +59,15 @@ class SecurityLoggingService:
         """Check for brute force login attempts"""
         from accounts.models import LoginAttempt
 
-        # Check failed attempts in last 15 minutes
+        # Check failed attempts in last hour (3 strikes and you're stopped)
         recent_failures = LoginAttempt.objects.filter(
             username=username,
             ip_address=ip_address,
             success=False,
-            created_at__gte=timezone.now() - timedelta(minutes=15),
+            created_at__gte=timezone.now() - timedelta(hours=1),
         ).count()
 
-        if recent_failures >= 5:
+        if recent_failures >= 3:
             logger.warning(
                 f"Brute force detected: {recent_failures} failed attempts for {username} from {ip_address}"
             )

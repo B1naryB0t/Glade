@@ -7,6 +7,8 @@ export default function WebFingerSearch() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [following, setFollowing] = useState(false);
+  const [followSuccess, setFollowSuccess] = useState(false);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -16,32 +18,47 @@ export default function WebFingerSearch() {
 
     try {
       const webfingerData = await searchRemoteUser(handle);
-      const actorUrl = webfingerData.links.find(l => l.type === 'application/activity+json')?.href;
+      console.log('WebFinger data:', webfingerData);
+      
+      const actorUrl = webfingerData.links?.find(l => l.type === 'application/activity+json')?.href;
+      console.log('Actor URL:', actorUrl);
       
       if (actorUrl) {
         const actorData = await getRemoteActor(actorUrl);
+        console.log('Actor data:', actorData);
         setUser(actorData);
       } else {
-        setError('User not found');
+        setError('User not found - no actor URL in webfinger response');
       }
     } catch (err) {
-      setError('Failed to find user. Make sure the format is @user@instance.social');
+      console.error('Search error:', err);
+      setError(`Failed to find user: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleFollow = async () => {
+    setFollowing(true);
+    setError('');
+    
     try {
-      await followRemoteUser(user.preferredUsername);
-      alert('Follow request sent!');
+      // Pass the full actor ID (URI) for remote users
+      await followRemoteUser(user.id);
+      setFollowSuccess(true);
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => setFollowSuccess(false), 3000);
     } catch (err) {
-      alert('Failed to send follow request');
+      console.error('Follow error:', err);
+      setError(`Failed to send follow request: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setFollowing(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold mb-4" style={{ color: '#7A3644' }}>
         Search Remote Users
       </h2>
@@ -97,15 +114,24 @@ export default function WebFingerSearch() {
                   dangerouslySetInnerHTML={{ __html: user.summary }} 
                 />
               )}
-              <button
-                onClick={handleFollow}
-                className="mt-4 px-6 py-2 rounded-lg font-semibold text-white transition-colors"
-                style={{ backgroundColor: '#85993D' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#BBCC42'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#85993D'}
-              >
-                Follow
-              </button>
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={handleFollow}
+                  disabled={following || followSuccess}
+                  className="px-6 py-2 rounded-lg font-semibold text-white transition-colors disabled:opacity-50"
+                  style={{ backgroundColor: followSuccess ? '#BBCC42' : '#85993D' }}
+                  onMouseOver={(e) => !following && !followSuccess && (e.target.style.backgroundColor = '#BBCC42')}
+                  onMouseOut={(e) => !followSuccess && (e.target.style.backgroundColor = '#85993D')}
+                >
+                  {following ? 'Sending...' : followSuccess ? '✓ Followed!' : 'Follow'}
+                </button>
+                
+                {followSuccess && (
+                  <span className="text-sm font-medium" style={{ color: '#85993D' }}>
+                    Follow request sent successfully!
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

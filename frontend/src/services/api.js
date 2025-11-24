@@ -67,6 +67,16 @@ export const api = {
   },
 
   /**
+   * Change password
+   * @param {string} currentPassword
+   * @param {string} newPassword
+   * @returns {Promise<{message: string}>}
+   */
+  async changePassword(currentPassword, newPassword) {
+    return await authService.changePassword(currentPassword, newPassword);
+  },
+
+  /**
    * Delete account
    * @returns {Promise<Object>}
    */

@@ -9,10 +9,11 @@ from .models import Comment, Like, Post
 from notifications.services import NotificationService
 from privacy.services import PrivacyService
 from rest_framework import generics, permissions, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
 from .serializers import CommentSerializer, PostCreateSerializer, PostSerializer
 from services.validation_service import InputValidationService, RateLimitService
+from accounts.throttles import UploadRateThrottle
 
 
 class PostListCreateView(generics.ListCreateAPIView):
@@ -162,6 +163,7 @@ def like_post(request, post_id):
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([UploadRateThrottle])
 def upload_post_image(request):
     """Upload an image for a post"""
     if "image" not in request.FILES:
@@ -206,6 +208,15 @@ def post_comments(request, post_id):
         return Response(serializer.data)
 
     elif request.method == "POST":
+        # Apply rate limiting only to POST (comment creation)
+        from services.validation_service import RateLimitService
+        if not RateLimitService.check_rate_limit(
+            request.user, "create_comment", limit=60, window=3600
+        ):
+            return Response(
+                {"error": "Rate limit exceeded. Please slow down."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             comment = serializer.save(author=request.user, post=post)

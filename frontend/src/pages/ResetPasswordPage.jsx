@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../services/api";
 import ErrorAlert from "../components/common/ErrorAlert";
 
 function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
+  const { token } = useParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

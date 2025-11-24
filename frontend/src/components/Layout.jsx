@@ -1,9 +1,11 @@
-import React from 'react';
-import { Link, useNavigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import UserSearch from '../components/users/UserSearch';
-import NotificationBell from './NotificationBell';
-import FollowRequestsBadge from './FollowRequestsBadge';
+import React from "react";
+import { Link, useNavigate, Outlet } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import UserSearch from "../components/users/UserSearch";
+import NotificationBell from "./NotificationBell";
+import FollowRequestsBadge from "./FollowRequestsBadge";
+import Sidebar from "./Sidebar";
+import { Server } from "lucide-react";
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -11,7 +13,7 @@ function Layout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleProfileClick = () => {
@@ -26,7 +28,10 @@ function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-coral to-burgundy bg-clip-text text-transparent hover:scale-105 transition-transform">
+              <Link
+                to="/"
+                className="text-2xl font-bold bg-gradient-to-r from-coral to-burgundy bg-clip-text text-transparent hover:scale-105 transition-transform"
+              >
                 Glade
               </Link>
               <div className="hidden md:ml-8 md:flex md:space-x-6">
@@ -41,7 +46,7 @@ function Layout() {
                 <UserSearch />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               {user && (
                 <>
@@ -74,7 +79,21 @@ function Layout() {
           </div>
         </div>
       </nav>
-      <main><Outlet /></main>
+      <div className="relative">
+        {/* centered main column (max-w-3xl == 48rem) */}
+        <main className="max-w-3xl mx-auto px-2 py-6">
+          <Outlet />
+        </main>
+
+        {/* sidebar removed from flow and positioned to the right of the centered main */}
+        <aside
+          className="hidden xl:block w-64 px-2 py-6 fixed top-20 left-1/2
+                    translate-x-[calc(24rem+0.5rem)]"
+          aria-hidden="true"
+        >
+          <Sidebar />
+        </aside>
+      </div>
     </div>
   );
 }

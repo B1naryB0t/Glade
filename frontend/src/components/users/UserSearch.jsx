@@ -108,7 +108,7 @@ function UserSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Search users..."
+          placeholder="Search local users..."
           className="flex-1 px-4 py-2 focus:outline-none bg-transparent"
           onFocus={handleFocus}
         />

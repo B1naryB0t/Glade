@@ -1,19 +1,28 @@
-import apiClient from './apiClient';
+import { apiClient } from './apiClient';
+import axios from 'axios';
 
 export const searchRemoteUser = async (handle) => {
-  const response = await apiClient.get(`/.well-known/webfinger?resource=acct:${handle.replace('@', '')}`);
-  return response.data;
-};
-
-export const getRemoteActor = async (actorUrl) => {
-  const response = await apiClient.get(actorUrl, {
-    headers: { 'Accept': 'application/activity+json' }
+  // Use axios directly to avoid /api/v1 prefix
+  // Let axios handle URL encoding by using params
+  const response = await axios.get('/api/lookup', {
+    params: { handle }
   });
   return response.data;
 };
 
-export const followRemoteUser = async (username) => {
-  const response = await apiClient.post(`/api/auth/follow/${username}/`);
+export const getRemoteActor = async (actorUrl) => {
+  // Proxy through backend to avoid CORS and auth issues
+  const response = await axios.get('/api/fetch-actor', {
+    params: { actor_url: actorUrl }
+  });
+  return response.data;
+};
+
+export const followRemoteUser = async (actorUri) => {
+  // Use POST body for actor URI (handles slashes properly)
+  const response = await apiClient.post('/auth/follow/', {
+    actor_uri: actorUri
+  });
   return response.data;
 };
 
@@ -23,6 +32,12 @@ export const unfollowRemoteUser = async (username) => {
 };
 
 export const getFederatedFeed = async (page = 1) => {
-  const response = await apiClient.get(`/api/posts/?federated=true&page=${page}`);
+  // Use axios directly to avoid /api/v1 prefix
+  const response = await axios.get(`/api/federated-timeline?page=${page}`, {
+    headers: {
+      'Authorization': `Token ${localStorage.getItem('authToken')}`,
+      'ngrok-skip-browser-warning': 'true'
+    }
+  });
   return response.data;
 };

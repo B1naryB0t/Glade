@@ -26,6 +26,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
+    # "oauth2_provider",  # Not currently used
 ]
 
 LOCAL_APPS = [
@@ -108,11 +109,22 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
         "registration": "2/hour",  # 2 registrations per hour per IP
         "resend_verification": "1/5min",  # 1 request per 5 minutes (enforces wait time)
+        "password_reset": "3/hour",  # Password reset requests per IP
         "anon": "100/hour",  # General anonymous rate limit
         "user": "1000/hour",  # General authenticated user rate limit
+        "login": "3/hour",  # Failed login attempts per IP (handled in view logic)
+        "follow": "30/hour",  # Follow/unfollow actions per user
+        "comment": "60/hour",  # Comment creation per user
+        "upload": "20/hour",  # File uploads per user
+        "search": "100/hour",  # Search requests per user
+        "federation_inbox": "300/hour",  # Incoming federation activities per IP
     },
 }
 
@@ -232,10 +244,10 @@ CSRF_COOKIE_HTTPONLY = True
 # }
 
 
-# Apend to INSTALLED_APPS
-INSTALLED_APPS += [
-    "activitypub",
-]
+# ActivityPub app removed - using 'federation' app instead
+# INSTALLED_APPS += [
+#     "activitypub",
+# ]
 
 # Feature flag for ActivityPub (default off)
 ACTIVITYPUB_ENABLED = os.environ.get("ACTIVITYPUB_ENABLED", "false").lower() in (

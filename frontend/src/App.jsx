@@ -22,6 +22,10 @@ import Loading from "./components/common/Loading";
 import FederatedFeed from "./pages/FederatedFeed";
 import WebFingerSearch from "./components/WebFingerSearch";
 import "./index.css";
+import InstancePage from "./pages/InstancePage";
+import RemoteInstancesPage from "./pages/RemoteInstancesPage";
+import RemoteUsersPage from "./pages/RemoteUsersPage";
+import ActivityLogPage from "./pages/ActivityLogPage";
 
 // Protected Layout - combines auth check with layout
 function ProtectedLayout() {
@@ -105,6 +109,14 @@ function App() {
             element={<NotificationSettingsPage />}
           />
           <Route path="/follow-requests" element={<FollowRequestsPage />} />
+
+          <Route path="/instance" element={<InstancePage />} />
+          <Route
+            path="/instance/remote-instances"
+            element={<RemoteInstancesPage />}
+          />
+          <Route path="/instance/remote-users" element={<RemoteUsersPage />} />
+          <Route path="/instance/activity-log" element={<ActivityLogPage />} />
         </Route>
 
         {/* Catch all */}

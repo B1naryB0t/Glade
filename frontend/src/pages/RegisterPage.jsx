@@ -65,8 +65,8 @@ function RegisterPage() {
     else if (!/\S+@\S+\.\S+/.test(formData.email))
       newErrors.email = "Email is invalid";
     if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
+    else if (formData.password.length < 8)
+      newErrors.password = "Password must be at least 8 characters";
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
     return newErrors;
@@ -228,6 +228,11 @@ function RegisterPage() {
                     {errors[field] && (
                       <p className="mt-2 text-sm" style={{ color: "#7A3644" }}>
                         {errors[field]}
+                      </p>
+                    )}
+                    {field === "password" && !errors[field] && (
+                      <p className="mt-1 text-xs text-gray-600">
+                        Must be at least 8 characters long
                       </p>
                     )}
                   </div>

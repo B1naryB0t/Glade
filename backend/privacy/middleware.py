@@ -29,22 +29,29 @@ class PrivacyMiddleware:
 
     @staticmethod
     def _check_rate_limit(request):
-        """Simple rate limiting"""
-        if settings.DEBUG:
+        """
+        Global rate limiting as a safety net.
+        Note: Most endpoints should use DRF throttling for more granular control.
+        This catches any endpoints that don't have specific throttling.
+        """
+        # Skip for static files and media
+        if request.path.startswith('/static/') or request.path.startswith('/media/'):
             return True
-
+        
         # Get client IP
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(",")[0]
+            # Take the last IP in the chain (most trustworthy in reverse proxy setup)
+            ip = x_forwarded_for.split(",")[-1].strip()
         else:
             ip = request.META.get("REMOTE_ADDR")
 
-        # Rate limit: 100 requests per minute per IP
-        key = f"rate_limit:{ip}"
+        # Global rate limit: 200 requests per minute per IP (safety net)
+        # Individual endpoints have stricter limits via DRF throttling
+        key = f"global_rate_limit:{ip}"
         current = cache.get(key, 0)
 
-        if current >= 100:
+        if current >= 200:
             return False
 
         cache.set(key, current + 1, 60)  # 60 seconds

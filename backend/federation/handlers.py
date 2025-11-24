@@ -66,7 +66,7 @@ class ActivityHandler:
             return {"status": "error", "reason": str(e)}
 
     async def _handle_follow(self, activity: dict) -> dict:
-        """Handle Follow activity"""
+        """Handle Follow activity from remote user"""
         actor_uri = activity.get("actor")
         object_uri = activity.get("object")
 
@@ -75,24 +75,27 @@ class ActivityHandler:
         if not remote_user:
             return {"status": "error", "reason": "could not fetch remote actor"}
 
-        # Find local user
+        # Find local user being followed
         local_user = await self._get_local_user_from_uri(object_uri)
         if not local_user:
             return {"status": "error", "reason": "local user not found"}
 
-        # Create or update follow relationship
-        follow, created = await sync_to_async(Follow.objects.get_or_create)(
-            follower_id=remote_user.id,
-            following=local_user,
-            defaults={"activity_id": activity.get("id"), "accepted": False},
+        # Track the remote follower
+        from .models import RemoteFollower
+        
+        follower, created = await sync_to_async(RemoteFollower.objects.get_or_create)(
+            remote_user=remote_user,
+            local_user=local_user,
+            defaults={"activity_id": activity.get("id"), "accepted": True},
         )
-
-        if created:
-            # Auto-accept or require approval based on user settings
-            if getattr(local_user, "auto_accept_follows", True):
-                await self._send_accept(local_user, activity)
-                follow.accepted = True
-                await sync_to_async(follow.save)(update_fields=["accepted"])
+        
+        # Auto-accept the follow
+        await self._send_accept(local_user, activity)
+        
+        logger.info(
+            f"Remote user {actor_uri} is now following {local_user.username}, "
+            f"sent Accept, follower {'created' if created else 'already exists'}"
+        )
 
         return {
             "status": "success",
@@ -120,13 +123,23 @@ class ActivityHandler:
         if not remote_user:
             return {"status": "error", "reason": "remote user not found"}
 
-        # Update follow status
+        # Create or update RemoteFollow
+        from .models import RemoteFollow
         try:
-            follow = await sync_to_async(Follow.objects.get)(
-                follower=local_user, following_id=remote_user.id
+            follow, created = await sync_to_async(RemoteFollow.objects.get_or_create)(
+                follower=local_user,
+                remote_user=remote_user,
+                defaults={'accepted': True, 'activity_id': activity.get('id', '')}
             )
-            follow.accepted = True
-            await sync_to_async(follow.save)(update_fields=["accepted"])
+            if not created and not follow.accepted:
+                follow.accepted = True
+                await sync_to_async(follow.save)(update_fields=["accepted"])
+            
+            # Fetch their recent posts
+            from .services import ActivityPubService
+            ap_service = ActivityPubService()
+            await ap_service.fetch_remote_posts(remote_user)
+            
             return {"status": "success", "action": "follow_accepted"}
         except Follow.DoesNotExist:
             return {"status": "error", "reason": "follow not found"}
@@ -371,9 +384,9 @@ class ActivityHandler:
 
     async def _log_activity(self, activity: dict, direction: str):
         """Log activity to database"""
+        import uuid
         await sync_to_async(Activity.objects.create)(
-            activity_id=activity.get(
-                "id", f"activity:{Activity.objects.count() + 1}"),
+            activity_id=activity.get("id", f"activity:{uuid.uuid4()}"),
             activity_type=activity.get("type", "Unknown"),
             direction=direction,
             actor_uri=activity.get("actor", ""),

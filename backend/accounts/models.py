@@ -3,6 +3,7 @@ import secrets
 import uuid
 from datetime import timedelta
 
+import pytz
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
@@ -29,7 +30,12 @@ class User(AbstractUser):
     privacy_level = models.IntegerField(choices=PRIVACY_CHOICES, default=2)
     location_privacy_radius = models.IntegerField(default=1000)  # meters
     approximate_location = models.PointField(srid=4326, blank=True, null=True)
-
+    timezone = models.CharField(
+        max_length=50,
+        default="UTC",
+        choices=[(tz, tz) for tz in pytz.common_timezones],
+        help_text="User's preferred timezone for displaying dates and times",
+    )
     # Federation
     federation_enabled = models.BooleanField(default=True)
     actor_uri = models.URLField(blank=True)
@@ -62,13 +68,19 @@ class User(AbstractUser):
                 self.display_name
             )[:100]
         if self.bio:
-            self.bio = InputValidationService.sanitize_plain_text(self.bio)[:500]
+            self.bio = InputValidationService.sanitize_plain_text(self.bio)[
+                :500]
 
         super().save(*args, **kwargs)
 
+    def get_timezone(self):
+        """Get user's timezone as a pytz timezone object"""
+        return pytz.timezone(self.timezone)
+
     def _generate_keypair(self):
         """Generate RSA keypair for ActivityPub signatures"""
-        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        private_key = rsa.generate_private_key(
+            public_exponent=65537, key_size=2048)
 
         # Serialize private key
         self.private_key = private_key.private_bytes(
@@ -86,13 +98,15 @@ class User(AbstractUser):
 
     def to_activitypub_actor(self):
         """Convert user to ActivityPub Actor object"""
+        # Use current INSTANCE_DOMAIN instead of saved actor_uri for consistency
+        actor_uri = f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}"
         return {
             "@context": [
                 "https://www.w3.org/ns/activitystreams",
                 "https://w3id.org/security/v1",
             ],
             "type": "Person",
-            "id": self.actor_uri,
+            "id": actor_uri,
             "preferredUsername": self.username,
             "name": self.display_name or self.username,
             "summary": self.bio,
@@ -101,8 +115,8 @@ class User(AbstractUser):
             "followers": f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}/followers",
             "following": f"https://{settings.INSTANCE_DOMAIN}/users/{self.username}/following",
             "publicKey": {
-                "id": f"{self.actor_uri}#main-key",
-                "owner": self.actor_uri,
+                "id": f"{actor_uri}#main-key",
+                "owner": actor_uri,
                 "publicKeyPem": self.public_key,
             },
             "endpoints": {"sharedInbox": f"https://{settings.INSTANCE_DOMAIN}/inbox"},
@@ -158,6 +172,26 @@ class EmailVerificationToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="verification_tokens"
+    )
+    token = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        """Check if token is still valid"""
+        return not self.used and self.expires_at > timezone.now()
+
+
+class PasswordResetToken(models.Model):
+    """Password reset tokens"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="password_reset_tokens"
     )
     token = models.CharField(max_length=255, unique=True)
     expires_at = models.DateTimeField()

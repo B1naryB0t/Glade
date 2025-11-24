@@ -1,206 +1,235 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+// frontend/src/pages/ProfilePage.jsx (Updated with federation info)
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams, Link } from "react-router-dom";
+import {
+  MapPin,
+  Calendar,
+  Users,
+  FileText,
+  Edit2,
+  Settings,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { api } from "../services/api";
-import Feed from "../components/posts/Feed";
-import FollowButton from "../components/users/FollowButton";
-import ErrorAlert from "../components/common/ErrorAlert";
-import Loading from "../components/common/Loading";
+import { userService } from "../services/userService";
+import PostCard from "../components/posts/PostCard";
+import UserTypeBadge, { UserTypeInfo } from "../components/UserTypeBadge";
 
-function ProfilePage() {
+export default function ProfilePage() {
   const { username } = useParams();
-  const { user: currentUser, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [profile, setProfile] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const isOwnProfile = username === "me" || username === currentUser?.username;
+  const profileUsername = isOwnProfile ? currentUser?.username : username;
 
-  const isOwnProfile = currentUser && currentUser.username === username;
+  // Fetch user profile
+  const { data: profileUser, isLoading: profileLoading } = useQuery({
+    queryKey: ["userProfile", profileUsername],
+    queryFn: () => userService.getUserProfile(profileUsername),
+    enabled: !!profileUsername,
+  });
 
-  useEffect(() => {
-    loadProfile();
-    loadUserPosts();
-  }, [username]);
+  // Fetch user posts
+  const { data: postsData, isLoading: postsLoading } = useQuery({
+    queryKey: ["userPosts", profileUsername],
+    queryFn: () => userService.getUserPosts(profileUsername),
+    enabled: !!profileUsername,
+  });
 
-  const loadProfile = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  // Follow/Unfollow mutation
+  const followMutation = useMutation({
+    mutationFn: (username) => userService.followUser(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userProfile", profileUsername]);
+    },
+  });
 
-      const profileData = await api.getUserProfile(username);
-      setProfile(profileData);
-    } catch (err) {
-      setError(err.message || "Failed to load profile");
-      if (err.response?.status === 404) {
-        setError("User not found");
-      }
-    } finally {
-      setIsLoading(false);
+  const unfollowMutation = useMutation({
+    mutationFn: (username) => userService.unfollowUser(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userProfile", profileUsername]);
+    },
+  });
+
+  const handleFollowToggle = () => {
+    if (profileUser?.is_following) {
+      unfollowMutation.mutate(profileUsername);
+    } else {
+      followMutation.mutate(profileUsername);
     }
   };
 
-  const loadUserPosts = async () => {
-    try {
-      setPostsLoading(true);
-      const userPosts = await api.getUserPosts(username);
-
-      if (Array.isArray(userPosts)) {
-        setPosts(userPosts);
-      } else if (userPosts?.results) {
-        setPosts(userPosts.results);
-      } else {
-        setPosts([]);
-      }
-    } catch {
-      setPosts([]);
-    } finally {
-      setPostsLoading(false);
-    }
-  };
-
-  const handleEditProfile = () => navigate("/settings");
-
-  if (isLoading) return <Loading />;
-
-  if (error) {
+  if (profileLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <ErrorAlert error={error} />
-        <button
-          onClick={() => navigate("/")}
-          className="mt-4 text-[#7A3644] hover:text-[#5f2a35]"
-        >
-          ← Back to home
-        </button>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-[#FFE3AB] rounded-lg shadow p-6 text-center">
-          <p className="text-[#7A3644] font-medium">User not found</p>
-          <button
-            onClick={() => navigate("/")}
-            className="mt-4 text-[#7A3644] hover:text-[#5f2a35]"
-          >
-            ← Back to home
-          </button>
+        <div className="animate-pulse">
+          <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
+          <div className="h-24 bg-gray-200 rounded-lg"></div>
         </div>
       </div>
     );
   }
 
+  if (!profileUser) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <h2 className="text-2xl font-bold text-burgundy mb-4">
+          User Not Found
+        </h2>
+        <p className="text-gray-600">
+          The user you're looking for doesn't exist.
+        </p>
+      </div>
+    );
+  }
+
+  const posts = postsData?.results || postsData || [];
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Profile Header */}
-      <div className="bg-[#FFE3AB] rounded-lg shadow mb-6 border border-[#FF9886]/40">
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-4">
-            {/* Left side: Avatar + basic info */}
-            <div className="flex items-start space-x-4 flex-1">
-              {/* Avatar */}
-              <div className="w-20 h-20 bg-[#7A3644] rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-2xl">
-                  {profile.username?.charAt(0).toUpperCase() || "U"}
+    <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Profile Header */}
+        <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-2 border-cream">
+          <div className="flex items-start gap-6">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              {profileUser.avatar_url ? (
+                <img
+                  src={profileUser.avatar_url}
+                  alt={profileUser.display_name || profileUser.username}
+                  className="w-32 h-32 rounded-full border-4 border-cream"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-olive flex items-center justify-center text-white text-4xl font-bold border-4 border-cream">
+                  {(profileUser.display_name || profileUser.username)
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            {/* Profile Info */}
+            <div className="flex-1">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold text-burgundy">
+                      {profileUser.display_name || profileUser.username}
+                    </h1>
+                    <UserTypeBadge user={profileUser} />
+                  </div>
+                  <p className="text-olive text-lg">@{profileUser.username}</p>
+                </div>
+
+                {/* Action Buttons */}
+                {isOwnProfile ? (
+                  <div className="flex gap-2">
+                    <Link
+                      to="/settings"
+                      className="flex items-center gap-2 px-4 py-2 bg-olive text-white rounded-lg hover:bg-lime transition-colors font-semibold"
+                    >
+                      <Settings size={18} />
+                      Settings
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={
+                      followMutation.isPending || unfollowMutation.isPending
+                    }
+                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                      profileUser.is_following
+                        ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        : "bg-olive text-white hover:bg-lime"
+                    }`}
+                  >
+                    {profileUser.is_following ? "Unfollow" : "Follow"}
+                  </button>
+                )}
+              </div>
+
+              {/* Bio */}
+              {profileUser.bio && (
+                <p className="text-gray-700 mb-4">{profileUser.bio}</p>
+              )}
+
+              {/* Stats */}
+              <div className="flex gap-6 mb-4">
+                <Link
+                  to={`/profile/${profileUsername}/followers`}
+                  className="text-gray-600 hover:text-burgundy transition-colors"
+                >
+                  <span className="font-bold text-burgundy">
+                    {profileUser.followers_count || 0}
+                  </span>{" "}
+                  Followers
+                </Link>
+                <Link
+                  to={`/profile/${profileUsername}/following`}
+                  className="text-gray-600 hover:text-burgundy transition-colors"
+                >
+                  <span className="font-bold text-burgundy">
+                    {profileUser.following_count || 0}
+                  </span>{" "}
+                  Following
+                </Link>
+                <span className="text-gray-600">
+                  <span className="font-bold text-burgundy">
+                    {profileUser.posts_count || 0}
+                  </span>{" "}
+                  Posts
                 </span>
               </div>
 
-              {/* User info */}
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-[#7A3644]">
-                  {profile.display_name || profile.username}
-                </h1>
-                <p className="text-[#85993D]">@{profile.username}</p>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex-shrink-0">
-              {isOwnProfile ? (
-                <button
-                  onClick={handleEditProfile}
-                  className="px-4 py-2 bg-[#FF9886] text-white rounded-md shadow 
-                             hover:bg-[#e97a66] transition-colors"
-                >
-                  Edit Profile
-                </button>
-              ) : isAuthenticated ? (
-                <FollowButton
-                  userId={profile.id}
-                  username={profile.username}
-                  initialFollowing={profile.is_following}
-                />
-              ) : null}
+              {/* Join Date */}
+              {profileUser.created_at && (
+                <div className="flex items-center gap-2 text-gray-600 text-sm">
+                  <Calendar size={16} />
+                  <span>
+                    Joined{" "}
+                    {new Date(profileUser.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Bio Section */}
-          {profile.bio ? (
-            <div className="mb-4 pb-4 border-b border-[#FF9886]/40">
-              <p className="text-[#7A3644] whitespace-pre-wrap break-words">
-                {profile.bio}
-              </p>
+          {/* Federation Info - Show for remote users */}
+          {!isOwnProfile && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <UserTypeInfo user={profileUser} />
             </div>
-          ) : isOwnProfile ? (
-            <div className="mb-4 pb-4 border-b border-[#FF9886]/40">
-              <p className="text-[#7A3644]/60 italic text-sm">
-                No bio yet.{" "}
-                <button
-                  onClick={handleEditProfile}
-                  className="text-[#FF9886] hover:text-[#e97a66] font-medium"
-                >
-                  Add one
-                </button>
-              </p>
-            </div>
-          ) : null}
-
-          {/* Stats */}
-          <div className="flex items-center space-x-6">
-            <div>
-              <span className="font-bold text-[#7A3644]">
-                {profile.posts_count || 0}
-              </span>
-              <span className="text-[#85993D] ml-1">posts</span>
-            </div>
-            <div>
-              <span className="font-bold text-[#7A3644]">
-                {profile.followers_count || 0}
-              </span>
-              <span className="text-[#85993D] ml-1">followers</span>
-            </div>
-            <div>
-              <span className="font-bold text-[#7A3644]">
-                {profile.following_count || 0}
-              </span>
-              <span className="text-[#85993D] ml-1">following</span>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
 
-      {/* Posts */}
-      <div>
-        <h2 className="text-xl font-bold text-[#7A3644] mb-4">Posts</h2>
-        {posts.length === 0 && !postsLoading ? (
-          <div className="bg-[#FFE3AB] rounded-lg shadow p-8 text-center border border-[#FF9886]/40">
-            <p className="text-[#7A3644]/60">
-              {isOwnProfile
-                ? "You haven't posted anything yet."
-                : `@${username} hasn't posted anything yet.`}
-            </p>
-          </div>
-        ) : (
-          <Feed posts={posts} isLoading={postsLoading} error={null} />
-        )}
-      </div>
+        {/* Posts Section */}
+        <div>
+          <h2 className="text-2xl font-bold text-burgundy mb-4 flex items-center gap-2">
+            <FileText size={24} />
+            Posts
+          </h2>
+
+          {postsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-burgundy mx-auto"></div>
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="space-y-4">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-md border-2 border-cream">
+              <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-600">
+                {isOwnProfile
+                  ? "You haven't posted anything yet"
+                  : "No posts yet"}
+              </p>
+            </div>
+          )}
+        </div>
     </div>
   );
 }
-
-export default ProfilePage;

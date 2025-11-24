@@ -45,14 +45,15 @@ services:
       DEBUG: "True"
       INSTANCE_DOMAIN: localhost:8000
       INSTANCE_NAME: Glade Demo
-      FEDERATION_ENABLED: "False"
+      FEDERATION_ENABLED: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ../../backend:/app/backend
+      - ../../backend:/app
     command: python manage.py runserver 0.0.0.0:8000
 
   frontend:
