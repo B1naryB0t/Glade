@@ -1,10 +1,11 @@
-import React from 'react';
-import { Link, useNavigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import UserSearch from '../components/users/UserSearch';
-import NotificationBell from './NotificationBell';
-import FollowRequestsBadge from './FollowRequestsBadge';
-import Sidebar from './Sidebar';
+import React from "react";
+import { Link, useNavigate, Outlet } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import UserSearch from "../components/users/UserSearch";
+import NotificationBell from "./NotificationBell";
+import FollowRequestsBadge from "./FollowRequestsBadge";
+import Sidebar from "./Sidebar";
+import { Server } from "lucide-react";
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -12,7 +13,7 @@ function Layout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleProfileClick = () => {
@@ -27,7 +28,10 @@ function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-coral to-burgundy bg-clip-text text-transparent hover:scale-105 transition-transform">
+              <Link
+                to="/"
+                className="text-2xl font-bold bg-gradient-to-r from-coral to-burgundy bg-clip-text text-transparent hover:scale-105 transition-transform"
+              >
                 Glade
               </Link>
               <div className="hidden md:ml-8 md:flex md:space-x-6">
@@ -42,11 +46,19 @@ function Layout() {
                 <UserSearch />
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               {user && (
                 <>
                   <NotificationBell />
+                  <Link
+                    to="/instance"
+                    className="flex items-center gap-2 text-burgundy hover:text-olive transition-colors"
+                    title="Instance Information"
+                  >
+                    <Server size={20} />
+                    <span className="hidden md:inline">Instance</span>
+                  </Link>
                   <FollowRequestsBadge />
                   <span className="text-sm text-burgundy font-medium hidden sm:block">
                     Hey, {user.username}!
@@ -76,7 +88,9 @@ function Layout() {
         </div>
       </nav>
       <div className="flex">
-        <main className="flex-1"><Outlet /></main>
+        <main className="flex-1">
+          <Outlet />
+        </main>
         <Sidebar />
       </div>
     </div>
