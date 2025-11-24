@@ -254,6 +254,15 @@ export const api = {
   },
 
   /**
+   * Delete user account
+   * @param {string} password
+   * @returns {Promise<Object>}
+   */
+  async deleteAccount(password) {
+    return await userService.deleteAccount(password);
+  },
+
+  /**
    * Search users
    * @param {string} query
    * @param {Object} params

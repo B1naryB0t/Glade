@@ -49,6 +49,21 @@ class PostCreateSerializer(serializers.ModelSerializer):
         
         return value
 
+    def validate(self, attrs):
+        """Validate that location requirements are met"""
+        request = self.context.get("request")
+        user = request.user
+        nearby_radius = attrs.get("nearby_radius_meters")
+        
+        # If nearby radius is set, user must have a location
+        if nearby_radius is not None:
+            if not user.approximate_location:
+                raise serializers.ValidationError({
+                    "nearby_radius_meters": "You must set your location in settings before creating location-based posts."
+                })
+        
+        return attrs
+
     def create(self, validated_data):
         request = self.context.get("request")
         user = request.user
@@ -58,7 +73,11 @@ class PostCreateSerializer(serializers.ModelSerializer):
         location_point = None
 
         # If nearby radius is set, use user's stored location (already fuzzed)
-        if nearby_radius and user.approximate_location:
+        if nearby_radius is not None:
+            if not user.approximate_location:
+                raise serializers.ValidationError(
+                    "You must set your location in settings before creating location-based posts."
+                )
             location_point = user.approximate_location
 
         post = Post.objects.create(

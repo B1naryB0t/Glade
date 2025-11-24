@@ -71,6 +71,7 @@ NEW_AMI=$(aws ec2 create-image \
     --instance-id $BLUE_INSTANCE_ID \
     --name "glade-$TIMESTAMP" \
     --description "Glade snapshot for blue/green deployment" \
+    --no-reboot \
     --query 'ImageId' \
     --output text)
 
@@ -142,6 +143,7 @@ if [ $PORT_RETRY -eq $MAX_PORT_RETRIES ]; then
     echo -e "${YELLOW}🗑️  Terminating green instance...${NC}"
     aws ec2 terminate-instances --region $REGION --instance-ids $GREEN_INSTANCE_ID
     exit 1
+fi
 fi
 
 # Now try SSH authentication

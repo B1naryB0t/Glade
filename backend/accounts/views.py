@@ -480,24 +480,50 @@ def get_ip_location(request):
     
     ip_address = SessionManagementService.get_client_ip(request)
     
-    # Skip for localhost
-    if ip_address in ['127.0.0.1', 'localhost', '::1']:
+    logger.info(f"IP location request from IP: {ip_address}")
+    
+    # Check if it's a private/localhost IP
+    is_private_ip = (
+        ip_address in ['127.0.0.1', 'localhost', '::1'] or 
+        ip_address.startswith('10.') or 
+        ip_address.startswith('192.168.') or 
+        ip_address.startswith('172.16.') or
+        ip_address.startswith('172.17.') or
+        ip_address.startswith('172.18.') or
+        ip_address.startswith('172.19.') or
+        ip_address.startswith('172.2') or
+        ip_address.startswith('172.30.') or
+        ip_address.startswith('172.31.')
+    )
+    
+    if is_private_ip:
+        logger.info(f"Private/localhost IP detected: {ip_address}, returning default location")
         return Response(
-            {"error": "Cannot geolocate localhost"},
-            status=status.HTTP_400_BAD_REQUEST,
+            {
+                "latitude": 35.305690,
+                "longitude": -80.732181,
+                "city": "Charlotte",
+                "region": "North Carolina",
+                "country": "United States",
+            },
+            status=status.HTTP_200_OK,
         )
     
     try:
         # Using ip-api.com free tier (no API key needed)
         response = requests.get(
             f"http://ip-api.com/json/{ip_address}",
-            timeout=5
+            timeout=10
         )
+        
+        logger.info(f"IP-API response status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
+            logger.info(f"IP-API response: status={data.get('status')}, message={data.get('message')}")
             
             if data.get('status') == 'success':
+                logger.info(f"Successfully geolocated {ip_address} to {data.get('city')}, {data.get('regionName')}")
                 return Response(
                     {
                         "latitude": data.get('lat'),
@@ -508,16 +534,33 @@ def get_ip_location(request):
                     },
                     status=status.HTTP_200_OK,
                 )
+            else:
+                logger.warning(f"IP-API returned failure: {data.get('message')} for IP {ip_address}")
         
+        # Fallback to default location
+        logger.warning(f"IP geolocation failed for {ip_address}, returning default location")
         return Response(
-            {"error": "Unable to determine location from IP"},
-            status=status.HTTP_400_BAD_REQUEST,
+            {
+                "latitude": 35.305690,
+                "longitude": -80.732181,
+                "city": "Charlotte",
+                "region": "North Carolina",
+                "country": "United States",
+            },
+            status=status.HTTP_200_OK,
         )
     except requests.RequestException as e:
-        logger.error(f"IP geolocation request failed: {e}")
+        logger.error(f"IP geolocation request failed for {ip_address}: {e}")
+        # Return default location instead of error
         return Response(
-            {"error": "Geolocation service unavailable"},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            {
+                "latitude": 35.305690,
+                "longitude": -80.732181,
+                "city": "Charlotte",
+                "region": "North Carolina",
+                "country": "United States",
+            },
+            status=status.HTTP_200_OK,
         )
 
 
@@ -585,3 +628,38 @@ def user_settings(request):
             "message": "Settings updated successfully",
             "user": UserSerializer(user).data
         })
+
+
+@api_view(["DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def delete_account(request):
+    """Delete user account and all associated data"""
+    user = request.user
+    
+    # Require password confirmation for security
+    password = request.data.get("password")
+    if not password:
+        return Response(
+            {"error": "Password confirmation required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # Verify password
+    if not user.check_password(password):
+        return Response(
+            {"error": "Invalid password"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    
+    # Log the account deletion
+    ip_address = SessionManagementService.get_client_ip(request)
+    logger.info(f"User {user.username} (id={user.pk}) deleted their account from IP {ip_address}")
+    
+    # Delete the user (cascade will handle related objects via Django ORM)
+    username = user.username
+    user.delete()
+    
+    return Response(
+        {"message": f"Account {username} has been permanently deleted"},
+        status=status.HTTP_200_OK,
+    )

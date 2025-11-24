@@ -6,7 +6,7 @@ import { useAuth } from "../../hooks/useAuth";
 import ConfirmModal from "../common/ConfirmModal";
 import FederatedPostIndicator from "./FederatedPostIndicator";
 
-function PostCard({ post }) {
+function PostCard({ post, onDelete }) {
   const { user: currentUser } = useAuth();
   const [showDeletePostModal, setShowDeletePostModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
@@ -96,7 +96,7 @@ function PostCard({ post }) {
   const finalVisibility = post.visibility;
   const finalCity = post.city;
   const finalRegion = post.region;
-  const isMyPost = post.author?.username === (post.user?.username || "");
+  const isMyPost = currentUser && post.author?.username === currentUser.username;
 
   // Visibility label + icon (backend returns integers: 1=public, 2=local, 3=followers, 4=private)
   const getVisibilityInfo = () => {
@@ -114,10 +114,7 @@ function PostCard({ post }) {
   // Format radius for display (convert meters to miles)
   const formatRadius = (meters) => {
     const miles = meters / 1609.34;
-    if (miles < 0.1) {
-      return `${Math.round(miles * 5280)} ft`;
-    }
-    return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles)} mi`;
   };
 
   const getTimeAgo = (dateString) => {
@@ -138,10 +135,14 @@ function PostCard({ post }) {
   const handleDeletePost = async () => {
     try {
       await api.deletePost(post.id);
-      window.location.reload(); // Refresh to show updated feed
+      setShowDeletePostModal(false);
+      if (onDelete) {
+        onDelete(post.id);
+      }
     } catch (error) {
-      console.error("Error deleting post:", error);
-      alert("Failed to delete post");
+      console.error('Error deleting post:', error);
+      setShowDeletePostModal(false);
+      alert('Failed to delete post. Please try again.');
     }
   };
 
@@ -207,7 +208,8 @@ function PostCard({ post }) {
                 {isMyPost ? formatRadius(post.location_radius) : "Nearby"}
               </span>
             </div>
-          )}{" "}
+          )}
+          
           {/* Delete button (only for post author) */}
           {currentUser && post.author?.username === currentUser.username && (
             <button

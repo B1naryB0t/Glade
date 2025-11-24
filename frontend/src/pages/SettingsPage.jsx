@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { apiClient } from '../services/apiClient';
+import { useAuth } from '../hooks/useAuth';
 import LocationPicker from '../components/LocationPicker';
+import ConfirmModal from '../components/common/ConfirmModal';
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   
   // State
   const [settings, setSettings] = useState({
@@ -25,6 +28,10 @@ function SettingsPage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load settings
   useEffect(() => {
@@ -99,6 +106,31 @@ function SettingsPage() {
     }
   };
 
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError('Password is required');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeleteError('');
+      
+      await api.deleteAccount(deletePassword);
+      
+      // Logout and redirect to home
+      logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to delete account. Please try again.';
+      setDeleteError(errorMsg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
 
 
   if (loading) {
@@ -153,6 +185,16 @@ function SettingsPage() {
                 }`}
               >
                 Notifications
+              </button>
+              <button
+                onClick={() => setActiveTab('danger')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'danger' 
+                    ? 'border-red-500 text-red-600' 
+                    : 'border-transparent text-gray-500 hover:text-red-600 hover:border-red-300'
+                }`}
+              >
+                Danger Zone
               </button>
             </nav>
           </div>
@@ -350,6 +392,24 @@ function SettingsPage() {
           </div>
         )}
 
+        {/* Danger Zone Tab */}
+        {activeTab === 'danger' && (
+          <div className="p-6">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-red-900 mb-2">Delete Account</h3>
+              <p className="text-sm text-red-700 mb-4">
+                Once you delete your account, there is no going back. This will permanently delete your account, all your posts, comments, likes, and followers. This action cannot be undone.
+              </p>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete My Account
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer with Save Button */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
           {successMessage && (
@@ -374,6 +434,54 @@ function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Delete Account</h3>
+            <p className="text-sm text-gray-700 mb-4">
+              This action cannot be undone. All your data will be permanently deleted.
+            </p>
+            <p className="text-sm text-gray-700 mb-4">
+              Please enter your password to confirm:
+            </p>
+            
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+            
+            {deleteError && (
+              <p className="text-sm text-red-600 mb-4">{deleteError}</p>
+            )}
+            
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword('');
+                  setDeleteError('');
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || !deletePassword}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

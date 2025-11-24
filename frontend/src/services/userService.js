@@ -121,6 +121,18 @@ export const userService = {
 	},
 
 	/**
+	 * Delete user account
+	 * @param {string} password - User's password for confirmation
+	 * @returns {Promise<Object>}
+	 */
+	async deleteAccount(password) {
+		const response = await apiClient.delete("/auth/delete-account/", {
+			data: { password }
+		});
+		return response.data;
+	},
+
+	/**
 	 * Discover nearby users
 	 * @param {Object} params - {lat, lng, radius}
 	 * @returns {Promise<Array>}
