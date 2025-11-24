@@ -88,9 +88,7 @@ function PostCard({ post, onDelete }) {
   const finalCity = post.city;
   const finalRegion = post.region;
   const visibility = post.visibility;
-
-  const isMyPost =
-    currentUser && post.author?.username === currentUser.username;
+  const isMyPost = currentUser && post.author?.username === currentUser.username;
 
   const getVisibilityInfo = () => {
     if (visibility === 4 || visibility === "private")
@@ -130,8 +128,9 @@ function PostCard({ post, onDelete }) {
       setShowDeletePostModal(false);
       if (onDelete) onDelete(post.id);
     } catch (error) {
-      console.error("Error deleting post:", error);
-      alert("Failed to delete post.");
+      console.error('Error deleting post:', error);
+      setShowDeletePostModal(false);
+      alert('Failed to delete post. Please try again.');
     }
   };
 
@@ -203,7 +202,8 @@ function PostCard({ post, onDelete }) {
               </span>
             </div>
           )}
-
+          
+          {/* Delete button (only for post author) */}
           {isMyPost && (
             <button
               onClick={() => setShowDeletePostModal(true)}
