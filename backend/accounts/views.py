@@ -24,7 +24,15 @@ from .serializers import (
     UserSerializer,
     UserSettingsSerializer,
 )
-from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
+from .throttles import (
+    CommentRateThrottle,
+    FollowRateThrottle,
+    LoginRateThrottle,
+    RegistrationRateThrottle,
+    ResendVerificationThrottle,
+    SearchRateThrottle,
+    UploadRateThrottle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +97,7 @@ def login_view(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Check for brute force attempts
+    # Check for brute force attempts (3 failed attempts in 1 hour)
     if SecurityLoggingService.check_brute_force(username, ip_address):
         return Response(
             {"error": "Too many failed login attempts. Please try again later."},
@@ -301,6 +309,7 @@ def timezone_list(request):
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([UploadRateThrottle])
 def upload_avatar(request):
     """Upload user avatar"""
     if "avatar" not in request.FILES:
@@ -352,6 +361,7 @@ def upload_avatar(request):
 
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([FollowRateThrottle])
 def follow_user_by_uri(request):
     """Follow a user by actor URI (for remote users with slashes in URI)"""
     logger.info(f"follow_user_by_uri called by user {request.user.username}")
@@ -383,6 +393,7 @@ def follow_user_by_uri(request):
 
 @api_view(["POST", "DELETE"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([FollowRateThrottle])
 def follow_user(request, username):
     """Follow or unfollow a user (local or remote)"""
     # Try local user first
@@ -474,6 +485,7 @@ def follow_user(request, username):
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
+@throttle_classes([SearchRateThrottle])
 def search_users(request):
     """Search for users by username with pagination"""
     query = request.query_params.get("q", "").strip()

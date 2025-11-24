@@ -9,6 +9,8 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import throttle_classes
+from accounts.throttles import FederationInboxThrottle
 from posts.models import Post
 
 from .handlers import ActivityHandler
@@ -90,6 +92,7 @@ def actor_view(request, username):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@throttle_classes([FederationInboxThrottle])
 def inbox_view(request, username=None):
     """Handle incoming ActivityPub activities"""
     try:
@@ -112,6 +115,7 @@ def inbox_view(request, username=None):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+@throttle_classes([FederationInboxThrottle])
 def shared_inbox_view(request):
     """Handle activities for the entire instance (shared inbox)"""
     return inbox_view(request)
