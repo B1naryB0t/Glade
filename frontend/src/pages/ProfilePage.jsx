@@ -61,12 +61,10 @@ export default function ProfilePage() {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="animate-pulse">
-            <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
-            <div className="h-24 bg-gray-200 rounded-lg"></div>
-          </div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
+          <div className="h-24 bg-gray-200 rounded-lg"></div>
         </div>
       </div>
     );
@@ -74,15 +72,13 @@ export default function ProfilePage() {
 
   if (!profileUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
-        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-          <h2 className="text-2xl font-bold text-burgundy mb-4">
-            User Not Found
-          </h2>
-          <p className="text-gray-600">
-            The user you're looking for doesn't exist.
-          </p>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <h2 className="text-2xl font-bold text-burgundy mb-4">
+          User Not Found
+        </h2>
+        <p className="text-gray-600">
+          The user you're looking for doesn't exist.
+        </p>
       </div>
     );
   }
@@ -90,8 +86,7 @@ export default function ProfilePage() {
   const posts = postsData?.results || postsData || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Profile Header */}
         <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-2 border-cream">
           <div className="flex items-start gap-6">
@@ -235,7 +230,6 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

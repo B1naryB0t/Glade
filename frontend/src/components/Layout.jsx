@@ -51,14 +51,6 @@ function Layout() {
               {user && (
                 <>
                   <NotificationBell />
-                  <Link
-                    to="/instance"
-                    className="flex items-center gap-2 text-burgundy hover:text-olive transition-colors"
-                    title="Instance Information"
-                  >
-                    <Server size={20} />
-                    <span className="hidden md:inline">Instance</span>
-                  </Link>
                   <FollowRequestsBadge />
                   <span className="text-sm text-burgundy font-medium hidden sm:block">
                     Hey, {user.username}!
@@ -87,11 +79,20 @@ function Layout() {
           </div>
         </div>
       </nav>
-      <div className="flex">
-        <main className="flex-1">
+      <div className="relative">
+        {/* centered main column (max-w-3xl == 48rem) */}
+        <main className="max-w-3xl mx-auto px-4 py-6">
           <Outlet />
         </main>
-        <Sidebar />
+
+        {/* sidebar removed from flow and positioned to the right of the centered main */}
+        <aside
+          className="hidden xl:block w-64 px-2 py-6 fixed top-20 left-1/2
+                    translate-x-[calc(24rem+0.5rem)]"
+          aria-hidden="true"
+        >
+          <Sidebar />
+        </aside>
       </div>
     </div>
   );

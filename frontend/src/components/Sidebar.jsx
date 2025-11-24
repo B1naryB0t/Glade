@@ -14,37 +14,47 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Home Feed", href: "/", icon: Home },
-  { name: "Local Community", href: "/local", icon: MapPin },
-  { name: "Following", href: "/following", icon: Users },
-  { name: "Federated", href: "/federated", icon: Globe },
-  { name: "Discover", href: "/discover", icon: Search },
-  { name: "Instance Info", href: "/instance", icon: Server },
-  { name: "Local Events", href: "/events", icon: Calendar },
-  { name: "Topics", href: "/topics", icon: Hash },
-  { name: "Trending", href: "/trending", icon: TrendingUp },
+  { name: "Home Feed", href: "/", icon: Home, enabled: true },
+  { name: "Local Community", href: "/local", icon: MapPin, enabled: false },
+  { name: "Following", href: "/following", icon: Users, enabled: false },
+  { name: "Federated", href: "/federated", icon: Globe, enabled: true },
+  { name: "Discover", href: "/discover", icon: Search, enabled: true },
+  { name: "Instance Info", href: "/instance", icon: Server, enabled: true },
+  { name: "Local Events", href: "/events", icon: Calendar, enabled: false },
+  { name: "Topics", href: "/topics", icon: Hash, enabled: false },
+  { name: "Trending", href: "/trending", icon: TrendingUp, enabled: false },
 ];
 
 function Sidebar() {
   return (
-    <aside className="w-64 bg-white shadow-lg rounded-lg h-fit sticky top-20 mr-4 mt-4">
+    <aside className="w-64 bg-white shadow-lg rounded-lg h-fit sticky top-20">
       <div className="p-4">
         <nav className="space-y-1">
           {navigation.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.href}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? "bg-[#FFE3AB] text-[#7A3644] border-r-2 border-[#85993D]"
-                    : "text-gray-600 hover:bg-[#FFE3AB] hover:text-[#7A3644]"
-                }`
-              }
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </NavLink>
+            item.enabled ? (
+              <NavLink
+                key={item.name}
+                to={item.href}
+                className={({ isActive }) =>
+                  `flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    isActive
+                      ? "bg-[#FFE3AB] text-[#7A3644] border-r-2 border-[#85993D]"
+                      : "text-gray-600 hover:bg-[#FFE3AB] hover:text-[#7A3644]"
+                  }`
+                }
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </NavLink>
+            ) : (
+              <div
+                key={item.name}
+                className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 cursor-not-allowed opacity-50"
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </div>
+            )
           ))}
         </nav>
 
