@@ -66,7 +66,7 @@ class ActivityHandler:
             return {"status": "error", "reason": str(e)}
 
     async def _handle_follow(self, activity: dict) -> dict:
-        """Handle Follow activity"""
+        """Handle Follow activity from remote user"""
         actor_uri = activity.get("actor")
         object_uri = activity.get("object")
 
@@ -75,24 +75,27 @@ class ActivityHandler:
         if not remote_user:
             return {"status": "error", "reason": "could not fetch remote actor"}
 
-        # Find local user
+        # Find local user being followed
         local_user = await self._get_local_user_from_uri(object_uri)
         if not local_user:
             return {"status": "error", "reason": "local user not found"}
 
-        # Create or update follow relationship
-        follow, created = await sync_to_async(Follow.objects.get_or_create)(
-            follower_id=remote_user.id,
-            following=local_user,
-            defaults={"activity_id": activity.get("id"), "accepted": False},
+        # Track the remote follower
+        from .models import RemoteFollower
+        
+        follower, created = await sync_to_async(RemoteFollower.objects.get_or_create)(
+            remote_user=remote_user,
+            local_user=local_user,
+            defaults={"activity_id": activity.get("id"), "accepted": True},
         )
-
-        if created:
-            # Auto-accept or require approval based on user settings
-            if getattr(local_user, "auto_accept_follows", True):
-                await self._send_accept(local_user, activity)
-                follow.accepted = True
-                await sync_to_async(follow.save)(update_fields=["accepted"])
+        
+        # Auto-accept the follow
+        await self._send_accept(local_user, activity)
+        
+        logger.info(
+            f"Remote user {actor_uri} is now following {local_user.username}, "
+            f"sent Accept, follower {'created' if created else 'already exists'}"
+        )
 
         return {
             "status": "success",

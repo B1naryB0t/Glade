@@ -1,26 +1,30 @@
 # backend/accounts/views.py
 import logging
 import smtplib
+
+import requests
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db import models
-from .models import EmailVerificationToken, Follow, User
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
-from .serializers import (
-    UserProfileSerializer,
-    UserRegistrationSerializer,
-    UserSerializer,
-)
-from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 from services.email_service import EmailVerificationService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
-import requests
+
+from .models import EmailVerificationToken, Follow, User
+from .serializers import (
+    TimezoneListSerializer,
+    UserProfileSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+    UserSettingsSerializer,
+)
+from .throttles import RegistrationRateThrottle, ResendVerificationThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +51,9 @@ class RegisterView(generics.CreateAPIView):
         try:
             EmailVerificationService.send_verification_email(user)
         except (smtplib.SMTPException, ConnectionError, TimeoutError) as exc:
-            logger.exception("Failed to send verification email for user id=%s: %s", user.pk, exc)
+            logger.exception(
+                "Failed to send verification email for user id=%s: %s", user.pk, exc
+            )
             # intentionally do not abort registration; user can request resend
 
         # Log successful registration
@@ -129,7 +135,9 @@ def logout_view(request):
     # `request.user` is expected to be authenticated by permission class, but guard defensively.
     user = request.user
     if isinstance(user, AnonymousUser) or not getattr(user, "is_authenticated", False):
-        return Response({"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            {"error": "Not authenticated"}, status=status.HTTP_401_UNAUTHORIZED
+        )
 
     # Delete token if it exists (no broad except; let unexpected errors surface during testing).
     token = getattr(user, "auth_token", None)
@@ -169,18 +177,21 @@ def verify_email(request, token):
 @permission_classes([permissions.IsAuthenticated])
 def resend_verification_email(request):
     """Resend verification email with rate limiting"""
-    from django.core.cache import cache
     from datetime import datetime
-    
+
+    from django.core.cache import cache
+
     user = request.user
     cache_key = f"resend_verification_{user.id}"
-    
+
     # Check if user has recently requested a resend
     last_request = cache.get(cache_key)
     if last_request:
         return Response(
-            {"error": "Please wait 5 minutes before requesting another verification email."},
-            status=status.HTTP_429_TOO_MANY_REQUESTS
+            {
+                "error": "Please wait 5 minutes before requesting another verification email."
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     # The analyzer can't guarantee 'email_verified' exists on the user model,
@@ -193,15 +204,19 @@ def resend_verification_email(request):
     # Catch the same set of expected email/network exceptions only.
     try:
         EmailVerificationService.send_verification_email(user)
-        
+
         # Set cache for 5 minutes (300 seconds)
         cache.set(cache_key, datetime.now().isoformat(), 300)
-        
+
         return Response(
             {"message": "Verification email sent"}, status=status.HTTP_200_OK
         )
     except (smtplib.SMTPException, ConnectionError, TimeoutError) as exc:
-        logger.exception("Failed to resend verification email for user id=%s: %s", getattr(user, "pk", "<unknown>"), exc)
+        logger.exception(
+            "Failed to resend verification email for user id=%s: %s",
+            getattr(user, "pk", "<unknown>"),
+            exc,
+        )
         return Response(
             {"error": "Failed to send verification email"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -236,6 +251,54 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         return Response(serializer.data)
 
 
+class UserSettingsView(generics.RetrieveUpdateAPIView):
+    """User settings management endpoint"""
+
+    serializer_class = UserSettingsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        """Update user settings"""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(
+            {
+                "message": "Settings updated successfully",
+                "user": UserSerializer(instance).data,
+            }
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update of user settings"""
+        kwargs["partial"] = True
+        return self.update(request, *args, **kwargs)
+
+
+@api_view(["GET"])
+@permission_classes([permissions.AllowAny])
+def timezone_list(request):
+    """Get list of available timezones with their current offsets"""
+    timezones = TimezoneListSerializer.get_timezone_list()
+
+    # Optional filtering by search query
+    search = request.query_params.get("search", "").lower()
+    if search:
+        timezones = [
+            tz
+            for tz in timezones
+            if search in tz["timezone"].lower() or search in tz["display_name"].lower()
+        ]
+
+    return Response({"count": len(timezones), "timezones": timezones})
+
+
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated])
 def upload_avatar(request):
@@ -265,8 +328,14 @@ def upload_avatar(request):
                 avatar_url = request.build_absolute_uri(avatar_field.url)
             except (ValueError, TypeError) as exc:
                 # fallback to the model property if present
-                logger.warning("Could not build absolute URI for avatar for user id=%s: %s", getattr(user, "pk", "<unknown>"), exc)
-                avatar_url = getattr(user, "avatar_url", None) or getattr(avatar_field, "url", None)
+                logger.warning(
+                    "Could not build absolute URI for avatar for user id=%s: %s",
+                    getattr(user, "pk", "<unknown>"),
+                    exc,
+                )
+                avatar_url = getattr(user, "avatar_url", None) or getattr(
+                    avatar_field, "url", None
+                )
 
         return Response(
             {
@@ -285,19 +354,30 @@ def upload_avatar(request):
 @permission_classes([permissions.IsAuthenticated])
 def follow_user_by_uri(request):
     """Follow a user by actor URI (for remote users with slashes in URI)"""
+    logger.info(f"follow_user_by_uri called by user {request.user.username}")
+    logger.info(f"Request data: {request.data}")
+    
     actor_uri = request.data.get("actor_uri")
     if not actor_uri:
+        logger.warning("No actor_uri provided in request")
         return Response({"error": "actor_uri required"}, status=400)
-    
+
     # Delegate to federation service for remote users
-    from federation.services import ActivityPubService
     from asgiref.sync import async_to_sync
-    
+    from federation.services import ActivityPubService
+
     try:
+        logger.info(f"Attempting to follow remote user: {actor_uri}")
         ap_service = ActivityPubService()
-        result = async_to_sync(ap_service.follow_remote_user)(request.user, actor_uri)
+        
+        # Use async_to_sync with force_new_loop to avoid conflicts with Celery
+        from asgiref.sync import async_to_sync
+        result = async_to_sync(ap_service.follow_remote_user, force_new_loop=True)(request.user, actor_uri)
+        
+        logger.info(f"Follow successful: {result}")
         return Response(result, status=201)
     except Exception as e:
+        logger.exception(f"Error in follow_user_by_uri for actor_uri={actor_uri}: {e}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -320,46 +400,78 @@ def follow_user(request, username):
             return Response({"error": "Cannot follow yourself"}, status=400)
 
         if request.method == "POST":
+            # Auto-accept only for public profiles (privacy_level = 1)
             auto_accept = target_user.privacy_level == 1
+
             follow, created = Follow.objects.get_or_create(
-                follower=request.user, 
+                follower=request.user,
                 following=target_user,
-                defaults={'accepted': auto_accept}
+                defaults={"accepted": auto_accept},
             )
 
             if created:
+                # Create notification (catch errors if Celery/Redis unavailable)
                 try:
                     if auto_accept:
                         NotificationService.notify_follow(target_user, request.user)
                     else:
-                        NotificationService.notify_follow_request(target_user, request.user)
+                        NotificationService.notify_follow_request(
+                            target_user, request.user
+                        )
                 except Exception as e:
                     print(f"Notification failed: {e}")
 
-            status_message = "following" if auto_accept else "requested"
-            return Response({"following": auto_accept, "requested": not auto_accept, "status": status_message}, status=201)
+                status_message = "following" if auto_accept else "requested"
+                return Response(
+                    {
+                        "following": auto_accept,
+                        "requested": not auto_accept,
+                        "status": status_message,
+                    },
+                    status=201,
+                )
+
+            # If already exists, return current status
+            return Response(
+                {
+                    "following": follow.accepted,
+                    "requested": not follow.accepted,
+                    "status": "following" if follow.accepted else "requested",
+                },
+                status=200,
+            )
+
         else:  # DELETE
             try:
-                follow = Follow.objects.get(follower=request.user, following=target_user)
+                follow = Follow.objects.get(
+                    follower=request.user, following=target_user
+                )
                 follow.delete()
+                # TODO: Send federation unfollow if remote user
                 return Response({"following": False}, status=200)
             except Follow.DoesNotExist:
                 return Response({"following": False}, status=200)
-    
+
     else:
         # Remote user follow - delegate to federation service
-        from federation.services import ActivityPubService
         from asgiref.sync import async_to_sync
-        
+        from federation.services import ActivityPubService
+
         if request.method == "POST":
             try:
                 ap_service = ActivityPubService()
-                result = async_to_sync(ap_service.follow_remote_user)(request.user, username)
+                result = async_to_sync(ap_service.follow_remote_user)(
+                    request.user, username
+                )
                 return Response(result, status=201)
             except Exception as e:
                 return Response({"error": str(e)}, status=500)
         else:  # DELETE
-            return Response({"error": "Unfollow remote users not yet implemented"}, status=501)
+            return Response(
+                {"error": "Unfollow remote users not yet implemented"}, status=501
+            )
+
+
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def search_users(request):
@@ -367,56 +479,58 @@ def search_users(request):
     query = request.query_params.get("q", "").strip()
     page = int(request.query_params.get("page", 1))
     page_size = 10
-    
+
     if not query or len(query) < 2:
         return Response({"results": [], "count": 0, "total": 0, "page": 1, "pages": 0})
-    
+
     # Search by username or display_name, respecting privacy levels
     # Privacy level 1 (Public): searchable by everyone
     # Privacy level 2 (Local): searchable by local users only
     # Privacy level 3 (Private): not searchable
     all_users = User.objects.filter(
-        models.Q(username__icontains=query) | 
-        models.Q(display_name__icontains=query),
-        privacy_level__in=[1, 2]  # Public and Local profiles are searchable
+        models.Q(username__icontains=query) | models.Q(display_name__icontains=query),
+        privacy_level__in=[1, 2],  # Public and Local profiles are searchable
     ).exclude(id=request.user.id)
-    
+
     total_count = all_users.count()
     total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
-    
+
     # Paginate results
     start = (page - 1) * page_size
     end = start + page_size
     users = all_users[start:end]
-    
+
     serializer = UserSerializer(users, many=True, context={"request": request})
-    return Response({
-        "results": serializer.data,
-        "count": len(serializer.data),
-        "total": total_count,
-        "page": page,
-        "pages": total_pages
-    })
+    return Response(
+        {
+            "results": serializer.data,
+            "count": len(serializer.data),
+            "total": total_count,
+            "page": page,
+            "pages": total_pages,
+        }
+    )
 
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def follow_requests(request):
     """Get pending follow requests for the authenticated user"""
+    # Currently only shows local follow requests
+    # Remote follow requests are auto-accepted via ActivityPub inbox
     pending_follows = Follow.objects.filter(
-        following=request.user,
-        accepted=False
-    ).select_related('follower')
-    
+        following=request.user, accepted=False
+    ).select_related("follower")
+
     requests_data = [
         {
             "id": str(follow.id),
             "follower": UserSerializer(follow.follower).data,
-            "created_at": follow.created_at
+            "created_at": follow.created_at,
         }
         for follow in pending_follows
     ]
-    
+
     return Response({"requests": requests_data}, status=200)
 
 
@@ -426,19 +540,17 @@ def accept_follow_request(request, follow_id):
     """Accept a follow request"""
     try:
         follow = Follow.objects.get(
-            id=follow_id,
-            following=request.user,
-            accepted=False
+            id=follow_id, following=request.user, accepted=False
         )
         follow.accepted = True
         follow.save()
-        
+
         # Notify the follower that their request was accepted
         try:
             NotificationService.notify_follow_accepted(follow.follower, request.user)
         except Exception as e:
             print(f"Notification failed: {e}")
-        
+
         return Response({"message": "Follow request accepted"}, status=200)
     except Follow.DoesNotExist:
         return Response({"error": "Follow request not found"}, status=404)
@@ -450,12 +562,10 @@ def reject_follow_request(request, follow_id):
     """Reject a follow request"""
     try:
         follow = Follow.objects.get(
-            id=follow_id,
-            following=request.user,
-            accepted=False
+            id=follow_id, following=request.user, accepted=False
         )
         follow.delete()
-        
+
         return Response({"message": "Follow request rejected"}, status=200)
     except Follow.DoesNotExist:
         return Response({"error": "Follow request not found"}, status=404)
@@ -469,19 +579,20 @@ def get_followers(request, username):
         user = User.objects.get(username=username)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=404)
-    
+
     # Get accepted followers
-    followers = Follow.objects.filter(
-        following=user,
-        accepted=True
-    ).select_related('follower')
-    
+    followers = Follow.objects.filter(following=user, accepted=True).select_related(
+        "follower"
+    )
+
     followers_data = [
         UserSerializer(follow.follower, context={"request": request}).data
         for follow in followers
     ]
-    
-    return Response({"results": followers_data, "count": len(followers_data)}, status=200)
+
+    return Response(
+        {"results": followers_data, "count": len(followers_data)}, status=200
+    )
 
 
 @api_view(["GET"])
@@ -492,46 +603,50 @@ def get_following(request, username):
         user = User.objects.get(username=username)
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=404)
-    
+
     # Get accepted follows
-    following = Follow.objects.filter(
-        follower=user,
-        accepted=True
-    ).select_related('following')
-    
+    following = Follow.objects.filter(follower=user, accepted=True).select_related(
+        "following"
+    )
+
     following_data = [
         UserSerializer(follow.following, context={"request": request}).data
         for follow in following
     ]
-    
-    return Response({"results": following_data, "count": len(following_data)}, status=200)
+
+    return Response(
+        {"results": following_data, "count": len(following_data)}, status=200
+    )
+
 
 @api_view(["GET"])
 @permission_classes([permissions.IsAuthenticated])
 def get_ip_location(request):
     """Get approximate location from IP address"""
     import requests
-    
+
     ip_address = SessionManagementService.get_client_ip(request)
-    
+
     logger.info(f"IP location request from IP: {ip_address}")
-    
+
     # Check if it's a private/localhost IP
     is_private_ip = (
-        ip_address in ['127.0.0.1', 'localhost', '::1'] or 
-        ip_address.startswith('10.') or 
-        ip_address.startswith('192.168.') or 
-        ip_address.startswith('172.16.') or
-        ip_address.startswith('172.17.') or
-        ip_address.startswith('172.18.') or
-        ip_address.startswith('172.19.') or
-        ip_address.startswith('172.2') or
-        ip_address.startswith('172.30.') or
-        ip_address.startswith('172.31.')
+        ip_address in ["127.0.0.1", "localhost", "::1"]
+        or ip_address.startswith("10.")
+        or ip_address.startswith("192.168.")
+        or ip_address.startswith("172.16.")
+        or ip_address.startswith("172.17.")
+        or ip_address.startswith("172.18.")
+        or ip_address.startswith("172.19.")
+        or ip_address.startswith("172.2")
+        or ip_address.startswith("172.30.")
+        or ip_address.startswith("172.31.")
     )
-    
+
     if is_private_ip:
-        logger.info(f"Private/localhost IP detected: {ip_address}, returning default location")
+        logger.info(
+            f"Private/localhost IP detected: {ip_address}, returning default location"
+        )
         return Response(
             {
                 "latitude": 35.305690,
@@ -542,37 +657,42 @@ def get_ip_location(request):
             },
             status=status.HTTP_200_OK,
         )
-    
+
     try:
         # Using ip-api.com free tier (no API key needed)
-        response = requests.get(
-            f"http://ip-api.com/json/{ip_address}",
-            timeout=10
-        )
-        
+        response = requests.get(f"http://ip-api.com/json/{ip_address}", timeout=10)
+
         logger.info(f"IP-API response status: {response.status_code}")
-        
+
         if response.status_code == 200:
             data = response.json()
-            logger.info(f"IP-API response: status={data.get('status')}, message={data.get('message')}")
-            
-            if data.get('status') == 'success':
-                logger.info(f"Successfully geolocated {ip_address} to {data.get('city')}, {data.get('regionName')}")
+            logger.info(
+                f"IP-API response: status={data.get('status')}, message={data.get('message')}"
+            )
+
+            if data.get("status") == "success":
+                logger.info(
+                    f"Successfully geolocated {ip_address} to {data.get('city')}, {data.get('regionName')}"
+                )
                 return Response(
                     {
-                        "latitude": data.get('lat'),
-                        "longitude": data.get('lon'),
-                        "city": data.get('city'),
-                        "region": data.get('regionName'),
-                        "country": data.get('country'),
+                        "latitude": data.get("lat"),
+                        "longitude": data.get("lon"),
+                        "city": data.get("city"),
+                        "region": data.get("regionName"),
+                        "country": data.get("country"),
                     },
                     status=status.HTTP_200_OK,
                 )
             else:
-                logger.warning(f"IP-API returned failure: {data.get('message')} for IP {ip_address}")
-        
+                logger.warning(
+                    f"IP-API returned failure: {data.get('message')} for IP {ip_address}"
+                )
+
         # Fallback to default location
-        logger.warning(f"IP geolocation failed for {ip_address}, returning default location")
+        logger.warning(
+            f"IP geolocation failed for {ip_address}, returning default location"
+        )
         return Response(
             {
                 "latitude": 35.305690,
@@ -603,36 +723,39 @@ def get_ip_location(request):
 def user_settings(request):
     """Get or update user settings"""
     user = request.user
-    
+
     if request.method == "GET":
         # Return user settings mapped to frontend expectations
-        privacy_map = {1: 'public', 2: 'local', 3: 'followers', 4: 'private'}
-        
+        privacy_map = {1: "public", 2: "local", 3: "followers", 4: "private"}
+
         # Extract lat/lng from approximate_location if it exists
         latitude = None
         longitude = None
         if user.approximate_location:
             longitude = user.approximate_location.x
             latitude = user.approximate_location.y
-        
-        return Response({
-            "username": user.username,
-            "email": user.email,
-            "email_verified": user.email_verified,
-            "bio": user.bio or "",
-            "latitude": latitude,
-            "longitude": longitude,
-            "profile_visibility": privacy_map.get(user.privacy_level, 'public'),
-            "default_post_privacy": 'public',  # TODO: Add to user model
-            "email_notifications": True,  # TODO: Get from notification preferences
-            "browser_notifications": False,
-        })
-    
+
+        return Response(
+            {
+                "username": user.username,
+                "email": user.email,
+                "email_verified": user.email_verified,
+                "bio": user.bio or "",
+                "latitude": latitude,
+                "longitude": longitude,
+                "profile_visibility": privacy_map.get(user.privacy_level, "public"),
+                "default_post_privacy": "public",  # TODO: Add to user model
+                "email_notifications": True,  # TODO: Get from notification preferences
+                "browser_notifications": False,
+            }
+        )
+
     elif request.method == "PUT":
         # Update user settings
         from django.contrib.gis.geos import Point
+
         data = request.data
-        
+
         if "display_name" in data:
             user.display_name = data["display_name"]
         if "bio" in data:
@@ -641,13 +764,14 @@ def user_settings(request):
             user.privacy_level = data["privacy_level"]
         if "location_privacy_radius" in data:
             user.location_privacy_radius = data["location_privacy_radius"]
-        
+
         # Update location if provided
         if "latitude" in data and "longitude" in data:
             lat = data["latitude"]
             lng = data["longitude"]
             if lat is not None and lng is not None:
                 from privacy.services import PrivacyService
+
                 privacy_service = PrivacyService()
                 fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
                     lat, lng, user.privacy_level
@@ -655,13 +779,15 @@ def user_settings(request):
                 user.approximate_location = Point(fuzzed_lng, fuzzed_lat)
             else:
                 user.approximate_location = None
-        
+
         user.save()
-        
-        return Response({
-            "message": "Settings updated successfully",
-            "user": UserSerializer(user).data
-        })
+
+        return Response(
+            {
+                "message": "Settings updated successfully",
+                "user": UserSerializer(user).data,
+            }
+        )
 
 
 @api_view(["DELETE"])
@@ -669,7 +795,7 @@ def user_settings(request):
 def delete_account(request):
     """Delete user account and all associated data"""
     user = request.user
-    
+
     # Require password confirmation for security
     password = request.data.get("password")
     if not password:
@@ -677,22 +803,24 @@ def delete_account(request):
             {"error": "Password confirmation required"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    
+
     # Verify password
     if not user.check_password(password):
         return Response(
             {"error": "Invalid password"},
             status=status.HTTP_401_UNAUTHORIZED,
         )
-    
+
     # Log the account deletion
     ip_address = SessionManagementService.get_client_ip(request)
-    logger.info(f"User {user.username} (id={user.pk}) deleted their account from IP {ip_address}")
-    
+    logger.info(
+        f"User {user.username} (id={user.pk}) deleted their account from IP {ip_address}"
+    )
+
     # Delete the user (cascade will handle related objects via Django ORM)
     username = user.username
     user.delete()
-    
+
     return Response(
         {"message": f"Account {username} has been permanently deleted"},
         status=status.HTTP_200_OK,

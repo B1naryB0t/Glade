@@ -22,6 +22,10 @@ import Loading from "./components/common/Loading";
 import FederatedFeed from "./pages/FederatedFeed";
 import WebFingerSearch from "./components/WebFingerSearch";
 import "./index.css";
+import InstancePage from "./pages/InstancePage";
+import RemoteInstancesPage from "./pages/RemoteInstancesPage";
+import RemoteUsersPage from "./pages/RemoteUsersPage";
+import ActivityLogPage from "./pages/ActivityLogPage";
 
 // Protected Layout - combines auth check with layout
 function ProtectedLayout() {
@@ -79,6 +83,10 @@ function App() {
         {/* Email verification - accessible without auth */}
         <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
+        {/* Password reset routes - accessible to anyone */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
         {/* Protected routes with Layout */}
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<HomePage />} />
@@ -101,6 +109,14 @@ function App() {
             element={<NotificationSettingsPage />}
           />
           <Route path="/follow-requests" element={<FollowRequestsPage />} />
+
+          <Route path="/instance" element={<InstancePage />} />
+          <Route
+            path="/instance/remote-instances"
+            element={<RemoteInstancesPage />}
+          />
+          <Route path="/instance/remote-users" element={<RemoteUsersPage />} />
+          <Route path="/instance/activity-log" element={<ActivityLogPage />} />
         </Route>
 
         {/* Catch all */}

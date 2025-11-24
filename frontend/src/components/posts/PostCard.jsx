@@ -5,11 +5,13 @@ import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import ConfirmModal from "../common/ConfirmModal";
 import FederatedPostIndicator from "../FederatedPostIndicator";
+import UserTypeBadge from "../UserTypeBadge";
 
 function PostCard({ post, onDelete }) {
   const { user: currentUser } = useAuth();
   const [showDeletePostModal, setShowDeletePostModal] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
+
   // Post state
   const [liked, setLiked] = useState(post?.liked_by_current_user || false);
   const [likeCount, setLikeCount] = useState(post?.likes_count || 0);
@@ -19,7 +21,7 @@ function PostCard({ post, onDelete }) {
   const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load comments only when expanded
+  // Load comments when expanded
   useEffect(() => {
     if (showComments) {
       loadComments();
@@ -28,7 +30,6 @@ function PostCard({ post, onDelete }) {
 
   const loadComments = async () => {
     if (!post?.id) return;
-
     try {
       setIsLoading(true);
       const commentsData = await api.getComments(post.id);
@@ -43,30 +44,23 @@ function PostCard({ post, onDelete }) {
   const handleLike = async () => {
     if (!post?.id) return;
 
-    // Optimistic update
-    const previousLiked = liked;
-    const previousCount = likeCount;
+    const prevLiked = liked;
+    const prevCount = likeCount;
+
     setLiked(!liked);
     setLikeCount(liked ? likeCount - 1 : likeCount + 1);
 
     try {
-      let result;
-      if (liked) {
-        // Currently liked, so unlike
-        result = await api.unlikePost(post.id);
-      } else {
-        // Currently not liked, so like
-        result = await api.likePost(post.id);
-      }
+      const result = liked
+        ? await api.unlikePost(post.id)
+        : await api.likePost(post.id);
 
-      // Update with server response
       setLiked(result.liked_by_current_user);
       setLikeCount(result.likes_count);
     } catch (error) {
       console.error("Error toggling like:", error);
-      // Rollback on failure
-      setLiked(previousLiked);
-      setLikeCount(previousCount);
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
       alert("Failed to update like. Please try again.");
     }
   };
@@ -75,43 +69,39 @@ function PostCard({ post, onDelete }) {
     e.preventDefault();
     if (!post?.id || !newComment.trim()) return;
 
-    // Optimistic update
-    const previousCount = commentCount;
-    setCommentCount((prev) => prev + 1);
+    const prevCount = commentCount;
+    setCommentCount(prevCount + 1);
 
     try {
       await api.addComment(post.id, newComment);
-      await loadComments(); // reload comments to prevent duplicates
+      await loadComments();
       setNewComment("");
     } catch (error) {
       console.error("Error adding comment:", error);
-      // Rollback on failure
-      setCommentCount(previousCount);
-      alert("Failed to add comment. Please try again.");
+      setCommentCount(prevCount);
+      alert("Failed to add comment.");
     }
   };
 
   if (!post) return null;
 
-  const finalVisibility = post.visibility;
   const finalCity = post.city;
   const finalRegion = post.region;
+  const visibility = post.visibility;
   const isMyPost = currentUser && post.author?.username === currentUser.username;
 
-  // Visibility label + icon (backend returns integers: 1=public, 2=local, 3=followers, 4=private)
   const getVisibilityInfo = () => {
-    const vis = finalVisibility;
-
-    if (vis === 4 || vis === "private") return { label: "Private", icon: "🔒" };
-    if (vis === 3 || vis === "followers")
+    if (visibility === 4 || visibility === "private")
+      return { label: "Private", icon: "🔒" };
+    if (visibility === 3 || visibility === "followers")
       return { label: "Followers", icon: "👥" };
-    if (vis === 2 || vis === "local") return { label: "Nearby", icon: "📍" };
+    if (visibility === 2 || visibility === "local")
+      return { label: "Nearby", icon: "📍" };
     return { label: "Public", icon: "🌎" };
   };
 
   const visibilityInfo = getVisibilityInfo();
 
-  // Format radius for display (convert meters to miles)
   const formatRadius = (meters) => {
     const miles = meters / 1609.34;
     return `${Math.round(miles)} mi`;
@@ -129,16 +119,14 @@ function PostCard({ post, onDelete }) {
   const username = post.author?.username || post.user?.username || "Unknown";
   const displayName =
     post.author?.display_name || post.user?.display_name || username;
-  const userId = post.author?.id || post.user?.id || "unknown";
+
   const userInitial = (displayName[0] || "U").toUpperCase();
 
   const handleDeletePost = async () => {
     try {
       await api.deletePost(post.id);
       setShowDeletePostModal(false);
-      if (onDelete) {
-        onDelete(post.id);
-      }
+      if (onDelete) onDelete(post.id);
     } catch (error) {
       console.error('Error deleting post:', error);
       setShowDeletePostModal(false);
@@ -147,20 +135,19 @@ function PostCard({ post, onDelete }) {
   };
 
   const handleDeleteComment = async (commentId) => {
-    // Optimistic update
-    const previousCount = commentCount;
-    const previousComments = comments;
-    setCommentCount((prev) => Math.max(0, prev - 1));
+    const prevCount = commentCount;
+    const prevComments = comments;
+
+    setCommentCount(Math.max(0, commentCount - 1));
     setComments(comments.filter((c) => c.id !== commentId));
 
     try {
       await api.deleteComment(commentId);
     } catch (error) {
       console.error("Error deleting comment:", error);
-      // Rollback on failure
-      setCommentCount(previousCount);
-      setComments(previousComments);
-      alert("Failed to delete comment");
+      setCommentCount(prevCount);
+      setComments(prevComments);
+      alert("Failed to delete comment.");
     }
   };
 
@@ -168,12 +155,18 @@ function PostCard({ post, onDelete }) {
     <div className="bg-white rounded-lg shadow border border-gray-100 p-5 mb-4">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
+        {/* Left side: avatar + name */}
         <Link to={`/profile/${username}`} className="flex items-center">
           <div className="w-10 h-10 bg-olive rounded-full flex items-center justify-center">
             <span className="text-white font-semibold">{userInitial}</span>
           </div>
+
           <div className="ml-3">
-            <h3 className="font-semibold text-burgundy">{displayName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-burgundy">{displayName}</h3>
+              <UserTypeBadge user={post.author} size="sm" />
+            </div>
+
             <div className="text-xs text-gray-500 flex items-center">
               <span>{getTimeAgo(post.created_at)}</span>
 
@@ -192,15 +185,15 @@ function PostCard({ post, onDelete }) {
           </div>
         </Link>
 
-        {/* Visibility badges */}
+        {/* Right side: badges + delete */}
         <div className="flex items-center gap-2">
-          {/* Add the FederatedPostIndicator here */}
           <FederatedPostIndicator post={post} />
+
           <div className="flex items-center text-xs bg-amber-100 text-amber-900 px-3 py-1 rounded-full">
             <span className="mr-1">{visibilityInfo.icon}</span>
             <span className="font-medium">{visibilityInfo.label}</span>
           </div>
-          {/* Show radius badge if location-based */}
+
           {post.location_radius && (
             <div className="flex items-center text-xs bg-blue-100 text-blue-900 px-3 py-1 rounded-full">
               <span className="mr-1">📍</span>
@@ -211,7 +204,7 @@ function PostCard({ post, onDelete }) {
           )}
           
           {/* Delete button (only for post author) */}
-          {currentUser && post.author?.username === currentUser.username && (
+          {isMyPost && (
             <button
               onClick={() => setShowDeletePostModal(true)}
               className="text-red-500 hover:text-red-700 p-1"
@@ -238,13 +231,11 @@ function PostCard({ post, onDelete }) {
       {/* Content */}
       <div className="mb-4">
         {post.activity_id ? (
-          // Federated post with HTML content
-          <div 
+          <div
             className="text-burgundy prose prose-sm max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         ) : (
-          // Local post with plain text
           <p className="text-burgundy whitespace-pre-wrap">{post.content}</p>
         )}
       </div>
@@ -275,7 +266,7 @@ function PostCard({ post, onDelete }) {
             <span>{likeCount}</span>
           </button>
 
-          {/* Comments */}
+          {/* Comments toggle */}
           <button
             onClick={() => setShowComments(!showComments)}
             className="flex items-center space-x-2 text-sm font-medium text-olive hover:text-lime"
@@ -319,6 +310,7 @@ function PostCard({ post, onDelete }) {
                           {(comment.author?.username?.[0] || "U").toUpperCase()}
                         </span>
                       </div>
+
                       <div>
                         <div className="text-sm font-medium">
                           {comment.author?.display_name ||
@@ -331,7 +323,7 @@ function PostCard({ post, onDelete }) {
                       </div>
                     </Link>
 
-                    {/* Delete button (only for comment author) */}
+                    {/* Delete comment */}
                     {currentUser &&
                       comment.author?.username === currentUser.username && (
                         <button
@@ -355,6 +347,7 @@ function PostCard({ post, onDelete }) {
                         </button>
                       )}
                   </div>
+
                   <p className="text-burgundy">{comment.content}</p>
                 </div>
               ))}

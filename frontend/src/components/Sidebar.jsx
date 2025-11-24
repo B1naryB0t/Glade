@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Globe,
   Search,
+  Server,
 } from "lucide-react";
 
 const navigation = [
@@ -18,6 +19,7 @@ const navigation = [
   { name: "Following", href: "/following", icon: Users },
   { name: "Federated", href: "/federated", icon: Globe },
   { name: "Discover", href: "/discover", icon: Search },
+  { name: "Instance Info", href: "/instance", icon: Server },
   { name: "Local Events", href: "/events", icon: Calendar },
   { name: "Topics", href: "/topics", icon: Hash },
   { name: "Trending", href: "/trending", icon: TrendingUp },

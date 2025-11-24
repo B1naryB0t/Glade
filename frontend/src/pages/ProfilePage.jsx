@@ -1,125 +1,72 @@
-import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../hooks/useAuth';
-import { api } from '../services/api';
-import PostCard from '../components/posts/PostCard';
+// frontend/src/pages/ProfilePage.jsx (Updated with federation info)
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams, Link } from "react-router-dom";
+import {
+  MapPin,
+  Calendar,
+  Users,
+  FileText,
+  Edit2,
+  Settings,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { userService } from "../services/userService";
+import PostCard from "../components/posts/PostCard";
+import UserTypeBadge, { UserTypeInfo } from "../components/UserTypeBadge";
 
-function ProfilePage() {
+export default function ProfilePage() {
   const { username } = useParams();
-  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
-  
-  const profileUsername = username === 'me' ? currentUser?.username : username;
 
-  // Fetch profile data
-  const { data: profileUser, isLoading: profileLoading, error: profileError } = useQuery({
-    queryKey: ['userProfile', profileUsername],
-    queryFn: () => api.getUserProfile(profileUsername),
+  const isOwnProfile = username === "me" || username === currentUser?.username;
+  const profileUsername = isOwnProfile ? currentUser?.username : username;
+
+  // Fetch user profile
+  const { data: profileUser, isLoading: profileLoading } = useQuery({
+    queryKey: ["userProfile", profileUsername],
+    queryFn: () => userService.getUserProfile(profileUsername),
     enabled: !!profileUsername,
   });
 
   // Fetch user posts
   const { data: postsData, isLoading: postsLoading } = useQuery({
-    queryKey: ['userPosts', profileUsername],
-    queryFn: () => api.getUserPosts(profileUsername),
+    queryKey: ["userPosts", profileUsername],
+    queryFn: () => userService.getUserPosts(profileUsername),
     enabled: !!profileUsername,
   });
 
-  // Follow/unfollow mutation with optimistic updates
+  // Follow/Unfollow mutation
   const followMutation = useMutation({
-    mutationFn: (isFollowing) => 
-      isFollowing ? api.unfollowUser(profileUsername) : api.followUser(profileUsername),
-    onMutate: async (isFollowing) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['userProfile', profileUsername] });
-      
-      // Snapshot previous value
-      const previousProfile = queryClient.getQueryData(['userProfile', profileUsername]);
-      
-      // Optimistically update the profile
-      queryClient.setQueryData(['userProfile', profileUsername], (old) => {
-        if (isFollowing) {
-          // Unfollowing or canceling request
-          return {
-            ...old,
-            is_following: false,
-            follow_requested: false,
-            followers_count: old.is_following ? old.followers_count - 1 : old.followers_count,
-          };
-        } else {
-          // Following - don't update follower count yet (backend determines if auto-accepted)
-          return {
-            ...old,
-            is_following: false,
-            follow_requested: true,
-          };
-        }
-      });
-      
-      return { previousProfile };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousProfile) {
-        queryClient.setQueryData(['userProfile', profileUsername], context.previousProfile);
-      }
-    },
-    onSettled: () => {
-      // Refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['userProfile', profileUsername] });
-      queryClient.invalidateQueries({ queryKey: ['followers', profileUsername] });
-      queryClient.invalidateQueries({ queryKey: ['following', currentUser?.username] });
-      queryClient.invalidateQueries({ queryKey: ['userProfile', currentUser?.username] });
+    mutationFn: (username) => userService.followUser(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userProfile", profileUsername]);
     },
   });
 
-  const posts = postsData?.results || [];
-  const loading = profileLoading || postsLoading;
-  const error = profileError?.message || null;
+  const unfollowMutation = useMutation({
+    mutationFn: (username) => userService.unfollowUser(username),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["userProfile", profileUsername]);
+    },
+  });
 
-  // Check if this is the current user's profile
-  const isOwnProfile = currentUser && (
-    username === 'me' || 
-    username === currentUser.username || 
-    (profileUser && profileUser.username === currentUser.username)
-  );
+  const handleFollowToggle = () => {
+    if (profileUser?.is_following) {
+      unfollowMutation.mutate(profileUsername);
+    } else {
+      followMutation.mutate(profileUsername);
+    }
+  };
 
-  if (loading) {
+  if (profileLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
+            <div className="h-24 bg-gray-200 rounded-lg"></div>
           </div>
-        </div>
-        <div className="text-center mt-4">
-          <button 
-            onClick={() => navigate('/')}
-            className="text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            Return to Home
-          </button>
         </div>
       </div>
     );
@@ -127,126 +74,164 @@ function ProfilePage() {
 
   if (!profileUser) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">User not found</h2>
-          <p className="text-gray-600 mt-2">The profile you're looking for doesn't exist.</p>
-          <button 
-            onClick={() => navigate('/')}
-            className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            Return to Home
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
+        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+          <h2 className="text-2xl font-bold text-burgundy mb-4">
+            User Not Found
+          </h2>
+          <p className="text-gray-600">
+            The user you're looking for doesn't exist.
+          </p>
         </div>
       </div>
     );
   }
 
+  const posts = postsData?.results || postsData || [];
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Profile Header */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 bg-indigo-500 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">
-                {profileUser.username.charAt(0).toUpperCase()}
-              </span>
+    <div className="min-h-screen bg-gradient-to-br from-cream via-cream-light to-white">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Profile Header */}
+        <div className="bg-white rounded-lg shadow-md p-8 mb-8 border-2 border-cream">
+          <div className="flex items-start gap-6">
+            {/* Avatar */}
+            <div className="flex-shrink-0">
+              {profileUser.avatar_url ? (
+                <img
+                  src={profileUser.avatar_url}
+                  alt={profileUser.display_name || profileUser.username}
+                  className="w-32 h-32 rounded-full border-4 border-cream"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full bg-olive flex items-center justify-center text-white text-4xl font-bold border-4 border-cream">
+                  {(profileUser.display_name || profileUser.username)
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              )}
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {profileUser.username}
-              </h1>
-              {profileUser.email && (
-                <p className="text-gray-600">{profileUser.email}</p>
+
+            {/* Profile Info */}
+            <div className="flex-1">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl font-bold text-burgundy">
+                      {profileUser.display_name || profileUser.username}
+                    </h1>
+                    <UserTypeBadge user={profileUser} />
+                  </div>
+                  <p className="text-olive text-lg">@{profileUser.username}</p>
+                </div>
+
+                {/* Action Buttons */}
+                {isOwnProfile ? (
+                  <div className="flex gap-2">
+                    <Link
+                      to="/settings"
+                      className="flex items-center gap-2 px-4 py-2 bg-olive text-white rounded-lg hover:bg-lime transition-colors font-semibold"
+                    >
+                      <Settings size={18} />
+                      Settings
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={
+                      followMutation.isPending || unfollowMutation.isPending
+                    }
+                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                      profileUser.is_following
+                        ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        : "bg-olive text-white hover:bg-lime"
+                    }`}
+                  >
+                    {profileUser.is_following ? "Unfollow" : "Follow"}
+                  </button>
+                )}
+              </div>
+
+              {/* Bio */}
+              {profileUser.bio && (
+                <p className="text-gray-700 mb-4">{profileUser.bio}</p>
               )}
-              {profileUser.location && (
-                <p className="text-sm text-gray-500">
-                  📍 {profileUser.location.city}
-                  {profileUser.location.region ? `, ${profileUser.location.region}` : ''}
-                </p>
+
+              {/* Stats */}
+              <div className="flex gap-6 mb-4">
+                <Link
+                  to={`/profile/${profileUsername}/followers`}
+                  className="text-gray-600 hover:text-burgundy transition-colors"
+                >
+                  <span className="font-bold text-burgundy">
+                    {profileUser.followers_count || 0}
+                  </span>{" "}
+                  Followers
+                </Link>
+                <Link
+                  to={`/profile/${profileUsername}/following`}
+                  className="text-gray-600 hover:text-burgundy transition-colors"
+                >
+                  <span className="font-bold text-burgundy">
+                    {profileUser.following_count || 0}
+                  </span>{" "}
+                  Following
+                </Link>
+                <span className="text-gray-600">
+                  <span className="font-bold text-burgundy">
+                    {profileUser.posts_count || 0}
+                  </span>{" "}
+                  Posts
+                </span>
+              </div>
+
+              {/* Join Date */}
+              {profileUser.created_at && (
+                <div className="flex items-center gap-2 text-gray-600 text-sm">
+                  <Calendar size={16} />
+                  <span>
+                    Joined{" "}
+                    {new Date(profileUser.created_at).toLocaleDateString()}
+                  </span>
+                </div>
               )}
-              <p className="text-sm text-gray-500">
-                Joined {new Date(profileUser.created_at).toLocaleDateString()}
-              </p>
             </div>
           </div>
-          
-          {/* Follow Button - Only shown on other users' profiles */}
+
+          {/* Federation Info - Show for remote users */}
           {!isOwnProfile && (
-            <button 
-              className={`px-4 py-2 rounded-md ${
-                profileUser.is_following 
-                  ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' 
-                  : profileUser.follow_requested
-                  ? 'bg-yellow-200 text-yellow-800 hover:bg-yellow-300'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-              onClick={() => followMutation.mutate(profileUser.is_following || profileUser.follow_requested)}
-              disabled={followMutation.isPending}
-            >
-              {followMutation.isPending 
-                ? '...' 
-                : profileUser.is_following 
-                  ? 'Unfollow' 
-                  : profileUser.follow_requested 
-                    ? 'Cancel Request' 
-                    : 'Follow'}
-            </button>
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <UserTypeInfo user={profileUser} />
+            </div>
           )}
         </div>
 
-        {profileUser.bio && (
-          <div className="mt-4">
-            <p className="text-gray-700">{profileUser.bio}</p>
-          </div>
-        )}
-
-        {/* Stats - WITH CLICKABLE LINKS */}
-        <div className="flex space-x-6 mt-6 pt-6 border-t border-gray-200">
-          <div className="text-center">
-            <div className="text-xl font-bold text-gray-900">
-              {posts.length || profileUser.posts_count || 0}
-            </div>
-            <div className="text-sm text-gray-500">Posts</div>
-          </div>
-          
-          {/* CLICKABLE FOLLOWERS COUNT */}
-          <Link to={`/profile/${username}/followers`} className="text-center hover:opacity-80 transition-opacity">
-            <div className="text-xl font-bold text-gray-900">
-              {profileUser.followers_count || 0}
-            </div>
-            <div className="text-sm text-gray-500 hover:text-indigo-600">Followers</div>
-          </Link>
-          
-          {/* CLICKABLE FOLLOWING COUNT */}
-          <Link to={`/profile/${username}/following`} className="text-center hover:opacity-80 transition-opacity">
-            <div className="text-xl font-bold text-gray-900">
-              {profileUser.following_count || 0}
-            </div>
-            <div className="text-sm text-gray-500 hover:text-indigo-600">Following</div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Posts Section */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {isOwnProfile ? 'Your Posts' : `${profileUser.username}'s Posts`}
+        {/* Posts Section */}
+        <div>
+          <h2 className="text-2xl font-bold text-burgundy mb-4 flex items-center gap-2">
+            <FileText size={24} />
+            Posts
           </h2>
-        </div>
-        
-        <div className="divide-y divide-gray-200">
-          {posts.length > 0 ? (
-            posts.map(post => (
-              <div key={post.id} className="p-4">
-                <PostCard post={post} />
-              </div>
-            ))
+
+          {postsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-burgundy mx-auto"></div>
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="space-y-4">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
           ) : (
-            <div className="p-8 text-center text-gray-500">
-              {isOwnProfile ? "You haven't posted anything yet." : "No posts yet."}
+            <div className="text-center py-12 bg-white rounded-lg shadow-md border-2 border-cream">
+              <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-600">
+                {isOwnProfile
+                  ? "You haven't posted anything yet"
+                  : "No posts yet"}
+              </p>
             </div>
           )}
         </div>
@@ -254,5 +239,3 @@ function ProfilePage() {
     </div>
   );
 }
-
-export default ProfilePage;

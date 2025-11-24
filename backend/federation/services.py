@@ -115,7 +115,10 @@ class ActivityPubService:
                     "instance": instance,
                     "username": actor_data.get("preferredUsername", ""),
                     "display_name": actor_data.get("name", ""),
+                    "summary": actor_data.get("summary", ""),
+                    "avatar_url": actor_data.get("icon", {}).get("url", ""),
                     "inbox_url": inbox_url,
+                    "outbox_url": actor_data.get("outbox", ""),
                     "public_key": actor_data.get("publicKey", {}).get("publicKeyPem", ""),
                 }
             )

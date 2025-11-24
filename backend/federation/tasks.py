@@ -205,23 +205,25 @@ def get_federation_targets(author: User, post: Post) -> list:
     """Get list of inbox URLs to federate to"""
     inboxes = set()
 
-    # 1. Author's followers
-    follower_inboxes = (
-        Follow.objects.filter(following=author, accepted=True)
-        .exclude(follower__actor_uri__startswith=f"https://{settings.INSTANCE_DOMAIN}")
-        .values_list("follower__inbox_url", flat=True)
-    )
-    inboxes.update(follower_inboxes)
-
+    # 1. Get remote followers (remote users following this local user)
+    from .models import RemoteFollower
+    remote_followers = RemoteFollower.objects.filter(
+        local_user=author,
+        accepted=True
+    ).select_related('remote_user')
+    
+    for follower in remote_followers:
+        if follower.remote_user.inbox_url:
+            inboxes.add(follower.remote_user.inbox_url)
+    
     # 2. If replying to a federated post, include original author
-    if post.reply_to and post.reply_to.federated_id:
-        remote_author = RemoteUser.objects.filter(
-            actor_uri=post.reply_to.author.actor_uri
-        ).first()
-        if remote_author and remote_author.inbox_url:
-            inboxes.add(remote_author.inbox_url)
-
-    # 3. For location-based posts, could add nearby instances
-    # TODO: Implement geospatial federation discovery
+    if hasattr(post, 'reply_to') and post.reply_to:
+        # Check if reply_to has federated_id or is a RemotePost
+        if hasattr(post.reply_to, 'federated_id') and post.reply_to.federated_id:
+            remote_author = RemoteUser.objects.filter(
+                actor_uri=post.reply_to.author.actor_uri
+            ).first()
+            if remote_author and remote_author.inbox_url:
+                inboxes.add(remote_author.inbox_url)
 
     return list(inboxes)
