@@ -75,7 +75,10 @@ function Layout() {
           </div>
         </div>
       </nav>
-      <main><Outlet /></main>
+      <div className="flex">
+        <main className="flex-1"><Outlet /></main>
+        <Sidebar />
+      </div>
     </div>
   );
 }

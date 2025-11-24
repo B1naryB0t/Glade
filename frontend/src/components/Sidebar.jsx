@@ -25,7 +25,7 @@ const navigation = [
 
 function Sidebar() {
   return (
-    <aside className="w-64 bg-white shadow-sm h-screen sticky top-16">
+    <aside className="w-64 bg-white shadow-lg rounded-lg h-fit sticky top-20 mr-4 mt-4">
       <div className="p-4">
         <nav className="space-y-1">
           {navigation.map((item) => (
