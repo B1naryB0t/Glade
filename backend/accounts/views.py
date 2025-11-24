@@ -524,6 +524,8 @@ def search_users(request):
 @permission_classes([permissions.IsAuthenticated])
 def follow_requests(request):
     """Get pending follow requests for the authenticated user"""
+    # Currently only shows local follow requests
+    # Remote follow requests are auto-accepted via ActivityPub inbox
     pending_follows = Follow.objects.filter(
         following=request.user, accepted=False
     ).select_related("follower")

@@ -124,7 +124,7 @@ class Activity(models.Model):
 
 
 class RemoteFollow(models.Model):
-    """Track follows to remote users"""
+    """Track follows to remote users (local user following remote user)"""
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     follower = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='remote_following')
