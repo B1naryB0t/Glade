@@ -3,15 +3,35 @@ from .base import *
 
 DEBUG = True
 
+# Allow ngrok domain from environment variable
+NGROK_DOMAIN = config('NGROK_DOMAIN', default='')
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+if NGROK_DOMAIN:
+    ALLOWED_HOSTS.append(NGROK_DOMAIN)
 
 # CORS settings for development
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+if NGROK_DOMAIN:
+    CORS_ALLOWED_ORIGINS.append(f"https://{NGROK_DOMAIN}")
 
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development
+
+# Allow custom headers for ngrok and ActivityPub
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'ngrok-skip-browser-warning',  # For ngrok development
+]
 
 # Use local memory cache for development if Redis is not available
 # This ensures throttling works even without Redis running

@@ -26,6 +26,7 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
+    "oauth2_provider",
 ]
 
 LOCAL_APPS = [
