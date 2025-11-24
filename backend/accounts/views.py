@@ -244,8 +244,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
 
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
@@ -265,8 +264,7 @@ class UserSettingsView(generics.RetrieveUpdateAPIView):
         """Update user settings"""
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
@@ -352,68 +350,134 @@ def upload_avatar(request):
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def follow_user_by_uri(request):
+    """Follow a user by actor URI (for remote users with slashes in URI)"""
+    actor_uri = request.data.get("actor_uri")
+    if not actor_uri:
+        return Response({"error": "actor_uri required"}, status=400)
+
+    # Delegate to federation service for remote users
+    from asgiref.sync import async_to_sync
+    from federation.services import ActivityPubService
+
+    try:
+        ap_service = ActivityPubService()
+        result = async_to_sync(ap_service.follow_remote_user)(request.user, actor_uri)
+        return Response(result, status=201)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
 @api_view(["POST", "DELETE"])
 @permission_classes([permissions.IsAuthenticated])
 def follow_user(request, username):
-    """Follow or unfollow a user"""
+    """Follow or unfollow a user (local or remote)"""
+    # Try local user first
     try:
         target_user = User.objects.get(username=username)
+        is_remote = False
     except User.DoesNotExist:
-        return Response({"error": "User not found"}, status=404)
+        # Not a local user - treat as remote
+        is_remote = True
+        target_user = None
 
-    if target_user == request.user:
-        return Response({"error": "Cannot follow yourself"}, status=400)
+    if not is_remote:
+        # Local user follow logic
+        if target_user == request.user:
+            return Response({"error": "Cannot follow yourself"}, status=400)
 
-    if request.method == "POST":
-        # Auto-accept only for public profiles (privacy_level = 1)
-        auto_accept = target_user.privacy_level == 1
 
-        follow, created = Follow.objects.get_or_create(
-            follower=request.user,
-            following=target_user,
-            defaults={"accepted": auto_accept},
-        )
+@api_view(["POST", "DELETE"])
+@permission_classes([permissions.IsAuthenticated])
+def follow_user(request, username):
+    """Follow or unfollow a user (local or remote)"""
+    # Try local user first
+    try:
+        target_user = User.objects.get(username=username)
+        is_remote = False
+    except User.DoesNotExist:
+        # Not a local user - treat as remote
+        is_remote = True
+        target_user = None
 
-        if created:
-            # Create notification (catch errors if Celery/Redis unavailable)
-            try:
-                if auto_accept:
-                    NotificationService.notify_follow(
-                        target_user, request.user)
-                else:
-                    NotificationService.notify_follow_request(
-                        target_user, request.user)
-            except Exception as e:
-                print(f"Notification failed: {e}")
+    if not is_remote:
+        # Local user follow logic
+        if target_user == request.user:
+            return Response({"error": "Cannot follow yourself"}, status=400)
 
-            # TODO: Send federation follow request if remote user
-            status_message = "following" if auto_accept else "requested"
+        if request.method == "POST":
+            # Auto-accept only for public profiles (privacy_level = 1)
+            auto_accept = target_user.privacy_level == 1
+
+            follow, created = Follow.objects.get_or_create(
+                follower=request.user,
+                following=target_user,
+                defaults={"accepted": auto_accept},
+            )
+
+            if created:
+                # Create notification (catch errors if Celery/Redis unavailable)
+                try:
+                    if auto_accept:
+                        NotificationService.notify_follow(target_user, request.user)
+                    else:
+                        NotificationService.notify_follow_request(
+                            target_user, request.user
+                        )
+                except Exception as e:
+                    print(f"Notification failed: {e}")
+
+                status_message = "following" if auto_accept else "requested"
+                return Response(
+                    {
+                        "following": auto_accept,
+                        "requested": not auto_accept,
+                        "status": status_message,
+                    },
+                    status=201,
+                )
+
+            # If already exists, return current status
             return Response(
                 {
-                    "following": auto_accept,
-                    "requested": not auto_accept,
-                    "status": status_message,
+                    "following": follow.accepted,
+                    "requested": not follow.accepted,
+                    "status": "following" if follow.accepted else "requested",
                 },
-                status=201,
+                status=200,
             )
-        return Response(
-            {
-                "following": follow.accepted,
-                "requested": not follow.accepted,
-                "status": "following" if follow.accepted else "requested",
-            },
-            status=200,
-        )
 
-    else:  # DELETE
-        try:
-            follow = Follow.objects.get(
-                follower=request.user, following=target_user)
-            follow.delete()
-            # TODO: Send federation unfollow if remote user
-            return Response({"following": False}, status=200)
-        except Follow.DoesNotExist:
-            return Response({"following": False}, status=200)
+        else:  # DELETE
+            try:
+                follow = Follow.objects.get(
+                    follower=request.user, following=target_user
+                )
+                follow.delete()
+                # TODO: Send federation unfollow if remote user
+                return Response({"following": False}, status=200)
+            except Follow.DoesNotExist:
+                return Response({"following": False}, status=200)
+
+    else:
+        # Remote user follow - delegate to federation service
+        from asgiref.sync import async_to_sync
+        from federation.services import ActivityPubService
+
+        if request.method == "POST":
+            try:
+                ap_service = ActivityPubService()
+                result = async_to_sync(ap_service.follow_remote_user)(
+                    request.user, username
+                )
+                return Response(result, status=201)
+            except Exception as e:
+                return Response({"error": str(e)}, status=500)
+        else:  # DELETE
+            return Response(
+                {"error": "Unfollow remote users not yet implemented"}, status=501
+            )
 
 
 @api_view(["GET"])
@@ -432,14 +496,12 @@ def search_users(request):
     # Privacy level 2 (Local): searchable by local users only
     # Privacy level 3 (Private): not searchable
     all_users = User.objects.filter(
-        models.Q(username__icontains=query) | models.Q(
-            display_name__icontains=query),
+        models.Q(username__icontains=query) | models.Q(display_name__icontains=query),
         privacy_level__in=[1, 2],  # Public and Local profiles are searchable
     ).exclude(id=request.user.id)
 
     total_count = all_users.count()
-    total_pages = (total_count + page_size -
-                   1) // page_size  # Ceiling division
+    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
 
     # Paginate results
     start = (page - 1) * page_size
@@ -491,8 +553,7 @@ def accept_follow_request(request, follow_id):
 
         # Notify the follower that their request was accepted
         try:
-            NotificationService.notify_follow_accepted(
-                follow.follower, request.user)
+            NotificationService.notify_follow_accepted(follow.follower, request.user)
         except Exception as e:
             print(f"Notification failed: {e}")
 
@@ -605,8 +666,7 @@ def get_ip_location(request):
 
     try:
         # Using ip-api.com free tier (no API key needed)
-        response = requests.get(
-            f"http://ip-api.com/json/{ip_address}", timeout=10)
+        response = requests.get(f"http://ip-api.com/json/{ip_address}", timeout=10)
 
         logger.info(f"IP-API response status: {response.status_code}")
 

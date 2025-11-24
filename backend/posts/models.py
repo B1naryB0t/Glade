@@ -32,12 +32,28 @@ class Post(models.Model):
     local_only = models.BooleanField(default=False)
 
     # Federation
-    activity_id = models.URLField(blank=True, unique=True)  # ActivityPub object ID
+    activity_id = models.URLField(
+        max_length=255, unique=True, null=True, blank=True
+    )  # ActivityPub object ID
     # Original object ID if federated from remote
     federated_id = models.URLField(blank=True)
     reply_to = models.ForeignKey(
         "self", on_delete=models.CASCADE, blank=True, null=True, related_name="replies"
     )
+    federated = models.BooleanField(
+        default=False,
+        help_text="If true, this post will be published to federation."
+    )
+
+    def get_federation_targets(self):
+        targets = []
+        if hasattr(self.author, "followers_remote"):
+            for follower in self.author.followers_remote():
+                if getattr(follower, "inbox", None):
+                    targets.append(follower.inbox)
+        if getattr(self, "audience", None) == "public":
+            targets.append("https://www.w3.org/ns/activitystreams#Public")
+        return targets
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -111,8 +127,10 @@ class Like(models.Model):
     """Post likes/reactions"""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             on_delete=models.CASCADE)
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="likes")
 
     # Federation
     activity_id = models.URLField(blank=True)  # ActivityPub Like activity ID
@@ -136,9 +154,12 @@ class Like(models.Model):
 
 class Comment(models.Model):
     """Comment on a post"""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(
+        Post, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="comments")
     content = models.TextField(max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

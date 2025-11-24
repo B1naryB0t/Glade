@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import UserSearch from '../components/users/UserSearch';
 import NotificationBell from './NotificationBell';
 import FollowRequestsBadge from './FollowRequestsBadge';
+import Sidebar from './Sidebar';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -74,7 +75,10 @@ function Layout() {
           </div>
         </div>
       </nav>
-      <main><Outlet /></main>
+      <div className="flex">
+        <main className="flex-1"><Outlet /></main>
+        <Sidebar />
+      </div>
     </div>
   );
 }

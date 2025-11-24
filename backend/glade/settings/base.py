@@ -1,6 +1,7 @@
 import os
-import dj_database_url
 from pathlib import Path
+
+import dj_database_url
 
 # from celery.schedules import crontab # disabled until later stages of development
 from decouple import config
@@ -25,13 +26,13 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
+    "oauth2_provider",
 ]
 
 LOCAL_APPS = [
     "accounts",
     "posts",
     "federation",
-    # "communities", # does not exist
     "privacy",
     "notifications",
 ]
@@ -49,7 +50,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "privacy.middleware.PrivacyMiddleware",
-    # "federation.middleware.ActivityPubMiddleware",  # does not exist
 ]
 
 ROOT_URLCONF = "glade.urls"
@@ -231,3 +231,25 @@ CSRF_COOKIE_HTTPONLY = True
 #         "schedule": crontab(hour=2, minute=30),  # Run at 2:30 AM daily
 #     },
 # }
+
+
+# ActivityPub app removed - using 'federation' app instead
+# INSTALLED_APPS += [
+#     "activitypub",
+# ]
+
+# Feature flag for ActivityPub (default off)
+ACTIVITYPUB_ENABLED = os.environ.get("ACTIVITYPUB_ENABLED", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+# ActivityPub delivery defaults
+ACTIVITYPUB_DEFAULT_FROM = os.environ.get(
+    "ACTIVITYPUB_DEFAULT_FROM", "no-reply@example.local"
+)
+# Retry/backoff settings for Celery tasks
+ACTIVITYPUB_DELIVERY_MAX_RETRIES = int(
+    os.environ.get("ACTIVITYPUB_DELIVERY_MAX_RETRIES", "5")
+)
