@@ -29,10 +29,10 @@ urlpatterns = [
     path("api/v1/accounts/<uuid:account_id>/unfollow", mastodon_api.unfollow_account, name="unfollow_account"),
     path("api/v1/accounts/<uuid:account_id>/followers", mastodon_api.account_followers, name="account_followers"),
     path("api/v1/accounts/<uuid:account_id>/following", mastodon_api.account_following, name="account_following"),
-    # OAuth2 endpoints (django-oauth-toolkit)
-    path("oauth/", include("oauth2_provider.urls", namespace="oauth2_provider")),
-    # OAuth app management
-    path("api/v1/", include("oauth_app.urls")),
+    # OAuth2 endpoints (django-oauth-toolkit) - disabled for now
+    # path("oauth/", include("oauth2_provider.urls", namespace="oauth2_provider")),
+    # OAuth app management - disabled (requires oauth2_provider)
+    # path("api/v1/", include("oauth_app.urls")),
     path("", include("federation.urls")),
 ]
 
