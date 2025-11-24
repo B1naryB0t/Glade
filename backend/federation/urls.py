@@ -11,6 +11,10 @@ urlpatterns = [
     path(".well-known/nodeinfo", views.nodeinfo_discovery,
          name="nodeinfo_discovery"),
     path("nodeinfo/2.0", views.nodeinfo, name="nodeinfo"),
+    # Remote user lookup
+    path("api/lookup", views.lookup_remote_user, name="lookup_remote_user"),
+    path("api/fetch-actor", views.fetch_remote_actor_proxy, name="fetch_remote_actor"),
+    path("api/federated-timeline", views.federated_timeline, name="federated_timeline"),
     # ActivityPub endpoints
     path("users/<str:username>", views.actor_view, name="actor"),
     path("users/<str:username>/inbox", views.inbox_view, name="user_inbox"),
