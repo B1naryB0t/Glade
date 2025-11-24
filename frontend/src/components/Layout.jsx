@@ -81,7 +81,7 @@ function Layout() {
       </nav>
       <div className="relative">
         {/* centered main column (max-w-3xl == 48rem) */}
-        <main className="max-w-3xl mx-auto px-4 py-6">
+        <main className="max-w-3xl mx-auto px-2 py-6">
           <Outlet />
         </main>
 

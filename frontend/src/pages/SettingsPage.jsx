@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import { apiClient } from "../services/apiClient";
+import { useAuth } from "../hooks/useAuth";
+import LocationPicker from "../components/LocationPicker";
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // State
   const [settings, setSettings] = useState({
@@ -11,6 +15,8 @@ function SettingsPage() {
     username: "",
     display_name: "",
     bio: "",
+    latitude: null,
+    longitude: null,
     location: { city: "", region: "" },
     profile_visibility: "public",
     default_post_privacy: "public",
@@ -25,6 +31,10 @@ function SettingsPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load settings
   useEffect(() => {
@@ -41,6 +51,8 @@ function SettingsPage() {
           username: userSettings.username || "",
           display_name: userSettings.display_name || "",
           bio: userSettings.bio || "",
+          latitude: userSettings.latitude || null,
+          longitude: userSettings.longitude || null,
           location: userSettings.location || { city: "", region: "" },
           profile_visibility: userSettings.profile_visibility || "public",
           default_post_privacy: userSettings.default_post_privacy || "public",
@@ -85,11 +97,28 @@ function SettingsPage() {
     });
   };
 
+  // Handle location change from LocationPicker
+  const handleLocationChange = (lat, lng) => {
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      latitude: lat,
+      longitude: lng,
+    }));
+  };
+
   // Handle form submission
   const handleSave = async () => {
     try {
       setSaving(true);
       console.log("Saving settings:", settings);
+
+      // Save location if provided
+      if (settings.latitude && settings.longitude) {
+        await apiClient.post("/api/v1/auth/location/update/", {
+          latitude: settings.latitude,
+          longitude: settings.longitude,
+        });
+      }
 
       await api.updateUserSettings(settings);
 
@@ -108,41 +137,34 @@ function SettingsPage() {
     }
   };
 
-  // Get user's current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            // Typically you would use a geocoding service here
-            // For this demo, we'll just set some default values
-            setSettings((prev) => ({
-              ...prev,
-              location: {
-                city: "Charlotte", // This would normally come from geocoding API
-                region: "North Carolina", // This would normally come from geocoding API
-              },
-            }));
-          } catch (err) {
-            console.error("Error getting location:", err);
-            setError("Could not determine your current location.");
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error) => {
-          console.error("Error getting position:", error);
-          setLoading(false);
-          setError(
-            "Failed to get your current location. Please enter it manually.",
-          );
-        },
-      );
-    } else {
-      setError("Geolocation is not supported by your browser.");
+  // Handle account deletion
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError("Password is required");
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      setDeleteError("");
+
+      await api.deleteAccount(deletePassword);
+
+      // Logout and redirect to home
+      logout();
+      navigate("/");
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      const errorMsg =
+        error.response?.data?.error ||
+        "Failed to delete account. Please try again.";
+      setDeleteError(errorMsg);
+    } finally {
+      setIsDeleting(false);
     }
   };
+
+
 
   const formatDistance = (meters) => {
     if (meters >= 1000) {
@@ -205,6 +227,16 @@ function SettingsPage() {
                 }`}
               >
                 Notifications
+              </button>
+              <button
+                onClick={() => setActiveTab("danger")}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "danger"
+                    ? "border-red-500 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-red-600 hover:border-red-300"
+                }`}
+              >
+                Danger Zone
               </button>
             </nav>
           </div>
@@ -317,40 +349,34 @@ function SettingsPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location
-                  </label>
-                  <button
-                    type="button"
-                    onClick={getCurrentLocation}
-                    className="text-sm text-[#7A3644] hover:text-[#5f2a35]"
-                  >
-                    Use my current location
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <input
-                      type="text"
-                      value={settings.location?.city || ""}
-                      onChange={(e) =>
-                        handleChange("location.city", e.target.value)
-                      }
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
-                      placeholder="City"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={settings.location?.region || ""}
-                      onChange={(e) =>
-                        handleChange("location.region", e.target.value)
-                      }
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
-                      placeholder="State/Province/Region"
-                    />
+                <LocationPicker
+                  onLocationChange={handleLocationChange}
+                  initialLat={settings.latitude}
+                  initialLng={settings.longitude}
+                  required={false}
+                />
+                <div className="mt-2 text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
+                  <div className="flex items-start">
+                    <svg
+                      className="h-5 w-5 text-yellow-500 mr-2"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <p className="font-medium">
+                        Your location is fuzzed for privacy
+                      </p>
+                      <p className="mt-1">
+                        Your exact location is never stored. We apply privacy
+                        fuzzing to protect your location.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -573,6 +599,28 @@ function SettingsPage() {
           </div>
         )}
 
+        {/* Danger Zone Tab */}
+        {activeTab === "danger" && (
+          <div className="p-6">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-red-900 mb-2">
+                Delete Account
+              </h3>
+              <p className="text-sm text-red-700 mb-4">
+                Once you delete your account, there is no going back. This will
+                permanently delete your account, all your posts, comments,
+                likes, and followers. This action cannot be undone.
+              </p>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete My Account
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer with Save Button */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
           {successMessage && (
@@ -595,6 +643,54 @@ function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-red-900 mb-2">
+              Delete Account
+            </h3>
+            <p className="text-sm text-gray-700 mb-4">
+              This action cannot be undone. All your data will be permanently
+              deleted.
+            </p>
+            <p className="text-sm text-gray-700 mb-4">
+              Please enter your password to confirm:
+            </p>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+            {deleteError && (
+              <p className="text-sm text-red-600 mb-4">{deleteError}</p>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || !deletePassword}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Deleting..." : "Delete Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
