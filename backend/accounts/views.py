@@ -7,16 +7,17 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from notifications.services import NotificationService
 from rest_framework import generics, permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.response import Response
-from services.email_service import EmailVerificationService
+from services.email_service import EmailVerificationService, PasswordResetEmailService
 from services.security_service import SecurityLoggingService, SessionManagementService
 from services.validation_service import InputValidationService
 
-from .models import EmailVerificationToken, Follow, User
+from .models import EmailVerificationToken, Follow, PasswordResetToken, User
 from .serializers import (
     TimezoneListSerializer,
     UserProfileSerializer,
@@ -835,5 +836,234 @@ def delete_account(request):
 
     return Response(
         {"message": f"Account {username} has been permanently deleted"},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def request_password_reset(request):
+    """Request password reset - sends email with reset token"""
+    from django.core.cache import cache
+    
+    email = request.data.get("email")
+
+    if not email:
+        return Response(
+            {"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Rate limiting: max 3 requests per email per hour
+    cache_key = f"password_reset_{email}"
+    attempts = cache.get(cache_key, 0)
+    if attempts >= 3:
+        return Response(
+            {"error": "Too many password reset requests. Please try again later."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    try:
+        user = User.objects.get(email=email)
+        
+        # Invalidate all previous reset tokens for this user
+        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        
+        # Generate reset token
+        import secrets
+        from datetime import timedelta
+
+        token = secrets.token_urlsafe(32)
+        expires_at = timezone.now() + timedelta(hours=1)
+
+        # Create token record
+        PasswordResetToken.objects.create(
+            user=user, token=token, expires_at=expires_at
+        )
+
+        # Send reset email
+        try:
+            PasswordResetEmailService.send_password_reset_email(user, token)
+        except (smtplib.SMTPException, ConnectionError, TimeoutError) as exc:
+            logger.exception(
+                "Failed to send password reset email for user id=%s: %s", user.pk, exc
+            )
+            return Response(
+                {"error": "Failed to send password reset email"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+    except User.DoesNotExist:
+        # Don't reveal if email exists or not for security
+        pass
+
+    # Increment rate limit counter (1 hour TTL)
+    cache.set(cache_key, attempts + 1, 3600)
+
+    return Response(
+        {"message": "If that email exists, a password reset link has been sent."},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.AllowAny])
+def confirm_password_reset(request):
+    """Confirm password reset with token and new password"""
+    from django.core.cache import cache
+
+    token = request.data.get("token")
+    new_password = request.data.get("password")
+
+    if not token or not new_password:
+        return Response(
+            {"error": "Token and password are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Rate limit by IP for failed attempts
+    ip_address = SessionManagementService.get_client_ip(request)
+    cache_key = f"password_reset_confirm_{ip_address}"
+    failed_attempts = cache.get(cache_key, 0)
+    
+    if failed_attempts >= 10:
+        return Response(
+            {"error": "Too many failed attempts. Please request a new reset link."},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    # Validate password strength
+    if len(new_password) < 8:
+        return Response(
+            {"error": "Password must be at least 8 characters long"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token)
+    except PasswordResetToken.DoesNotExist:
+        cache.set(cache_key, failed_attempts + 1, 3600)  # 1 hour
+        return Response(
+            {"error": "Invalid or expired reset token"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not reset_token.is_valid():
+        cache.set(cache_key, failed_attempts + 1, 3600)
+        return Response(
+            {"error": "Invalid or expired reset token"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Prevent token reuse
+    if reset_token.used:
+        cache.set(cache_key, failed_attempts + 1, 3600)
+        logger.warning(
+            f"Attempt to reuse password reset token for user {reset_token.user.username} from IP {ip_address}"
+        )
+        return Response(
+            {"error": "This reset link has already been used. Please request a new one."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Update password
+    user = reset_token.user
+    user.set_password(new_password)
+    user.last_password_change = timezone.now()
+    user.save(update_fields=["password", "last_password_change"])
+
+    # Mark token as used
+    reset_token.used = True
+    reset_token.save(update_fields=["used"])
+
+    # Invalidate all other sessions/tokens for this user
+    Token.objects.filter(user=user).delete()
+
+    # Clear failed attempts cache
+    cache.delete(cache_key)
+
+    # Log security event
+    logger.info(
+        f"User {user.username} (id={user.pk}) reset password from IP {ip_address}"
+    )
+
+    # Send notification email about password change
+    try:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+
+        context = {
+            "user": user,
+            "ip_address": ip_address,
+            "timestamp": timezone.now(),
+        }
+        html_message = render_to_string("emails/password_changed.html", context)
+        plain_message = strip_tags(html_message)
+
+        send_mail(
+            subject=f"Password Changed - {settings.INSTANCE_NAME}",
+            message=plain_message,
+            html_message=html_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        logger.error(f"Failed to send password change notification: {e}")
+
+    return Response(
+        {"message": "Password has been reset successfully"},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated])
+def change_password(request):
+    """Change password for authenticated user"""
+    user = request.user
+    current_password = request.data.get("current_password")
+    new_password = request.data.get("new_password")
+
+    if not current_password or not new_password:
+        return Response(
+            {"error": "Current password and new password are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Verify current password
+    if not user.check_password(current_password):
+        return Response(
+            {"error": "Current password is incorrect"},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Validate new password strength
+    if len(new_password) < 8:
+        return Response(
+            {"error": "New password must be at least 8 characters long"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check if new password is same as current
+    if current_password == new_password:
+        return Response(
+            {"error": "New password must be different from current password"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Update password
+    user.set_password(new_password)
+    user.last_password_change = timezone.now()
+    user.save(update_fields=["password", "last_password_change"])
+
+    # Log security event
+    ip_address = SessionManagementService.get_client_ip(request)
+    logger.info(
+        f"User {user.username} (id={user.pk}) changed password from IP {ip_address}"
+    )
+
+    return Response(
+        {"message": "Password changed successfully"},
         status=status.HTTP_200_OK,
     )

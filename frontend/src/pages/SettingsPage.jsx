@@ -35,6 +35,16 @@ function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Load settings
   useEffect(() => {
@@ -164,6 +174,57 @@ function SettingsPage() {
     }
   };
 
+  // Handle password change
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    // Validation
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError("All fields are required");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters long");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordError("New password must be different from current password");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+
+      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
+
+      setPasswordSuccess("Password changed successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setPasswordSuccess("");
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to change password:", error);
+      setPasswordError(error.message || "Failed to change password. Please try again.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
 
 
   const formatDistance = (meters) => {
@@ -229,14 +290,14 @@ function SettingsPage() {
                 Notifications
               </button>
               <button
-                onClick={() => setActiveTab("danger")}
+                onClick={() => setActiveTab("security")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "danger"
-                    ? "border-red-500 text-red-600"
-                    : "border-transparent text-gray-500 hover:text-red-600 hover:border-red-300"
+                  activeTab === "security"
+                    ? "border-[#7A3644] text-[#7A3644]"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                Danger Zone
+                Security & Account
               </button>
             </nav>
           </div>
@@ -599,9 +660,87 @@ function SettingsPage() {
           </div>
         )}
 
-        {/* Danger Zone Tab */}
-        {activeTab === "danger" && (
-          <div className="p-6">
+        {/* Security & Account Tab */}
+        {activeTab === "security" && (
+          <div className="p-6 space-y-6">
+            {/* Change Password Section */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Change Password
+              </h3>
+              
+              {passwordError && (
+                <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+                  <p className="text-sm text-red-700">{passwordError}</p>
+                </div>
+              )}
+              
+              {passwordSuccess && (
+                <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
+                  <p className="text-sm text-green-700">{passwordSuccess}</p>
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                    }
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                    placeholder="Enter current password"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, newPassword: e.target.value })
+                    }
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                    placeholder="Enter new password"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Must be at least 8 characters long
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                    }
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="w-full px-4 py-2 bg-[#7A3644] text-white rounded-md hover:bg-[#5f2a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A3644] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isChangingPassword ? "Changing Password..." : "Change Password"}
+                </button>
+              </form>
+            </div>
+
+            {/* Delete Account Section */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-red-900 mb-2">
                 Delete Account

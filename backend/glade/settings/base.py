@@ -116,6 +116,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "registration": "2/hour",  # 2 registrations per hour per IP
         "resend_verification": "1/5min",  # 1 request per 5 minutes (enforces wait time)
+        "password_reset": "3/hour",  # Password reset requests per IP
         "anon": "100/hour",  # General anonymous rate limit
         "user": "1000/hour",  # General authenticated user rate limit
         "login": "3/hour",  # Failed login attempts per IP (handled in view logic)

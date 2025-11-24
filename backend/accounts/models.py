@@ -186,6 +186,26 @@ class EmailVerificationToken(models.Model):
         return not self.used and self.expires_at > timezone.now()
 
 
+class PasswordResetToken(models.Model):
+    """Password reset tokens"""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="password_reset_tokens"
+    )
+    token = models.CharField(max_length=255, unique=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self):
+        """Check if token is still valid"""
+        return not self.used and self.expires_at > timezone.now()
+
+
 class LoginAttempt(models.Model):
     """Track login attempts for security"""
 

@@ -72,3 +72,11 @@ class FederationInboxThrottle(AnonRateThrottle):
     Throttle for incoming federation activities to prevent DoS.
     """
     scope = 'federation_inbox'
+
+
+class PasswordResetThrottle(AnonRateThrottle):
+    """
+    Throttle for password reset requests to prevent abuse.
+    Limits to 3 requests per hour per IP.
+    """
+    scope = 'password_reset'

@@ -219,52 +219,69 @@ export const authService = {
   },
 
   /**
-   * NOTE: Password reset endpoints (/auth/password-reset/, /auth/password-reset/confirm/)
-   * are not yet implemented in the backend. These methods are placeholders.
-   * Uncomment when backend endpoints are available.
-   */
-
-  /**
-   * Request password reset (NOT YET IMPLEMENTED)
+   * Request password reset
    * @param {string} email
    * @returns {Promise<{message: string}>}
    */
-  // requestPasswordReset: async (email) => {
-  //   try {
-  //     console.log("AuthService: Requesting password reset");
-  //     const response = await apiClient.post("/auth/password-reset/", { email });
-  //     console.log("AuthService: Password reset requested", response.data);
-  //     return response.data;
-  //   } catch (error) {
-  //     console.error("AuthService: Password reset request failed", error);
-  //     throw new Error(
-  //       error.response?.data?.message || "Failed to request password reset",
-  //     );
-  //   }
-  // },
+  requestPasswordReset: async (email) => {
+    try {
+      console.log("AuthService: Requesting password reset");
+      const response = await apiClient.post("/auth/password-reset/", { email });
+      console.log("AuthService: Password reset requested", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("AuthService: Password reset request failed", error);
+      throw new Error(
+        error.response?.data?.error || "Failed to request password reset",
+      );
+    }
+  },
 
   /**
-   * Reset password with token (NOT YET IMPLEMENTED)
+   * Reset password with token
    * @param {string} token
    * @param {string} newPassword
    * @returns {Promise<{message: string}>}
    */
-  // resetPassword: async (token, newPassword) => {
-  //   try {
-  //     console.log("AuthService: Resetting password");
-  //     const response = await apiClient.post("/auth/password-reset/confirm/", {
-  //       token,
-  //       password: newPassword,
-  //     });
-  //     console.log("AuthService: Password reset successful", response.data);
-  //     return response.data;
-  //   } catch (error) {
-  //     console.error("AuthService: Password reset failed", error);
-  //     throw new Error(
-  //       error.response?.data?.message || "Failed to reset password",
-  //     );
-  //   }
-  // },
+  resetPassword: async (token, newPassword) => {
+    try {
+      console.log("AuthService: Resetting password");
+      const response = await apiClient.post("/auth/password-reset/confirm/", {
+        token,
+        password: newPassword,
+      });
+      console.log("AuthService: Password reset successful", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("AuthService: Password reset failed", error);
+      throw new Error(
+        error.response?.data?.error || "Failed to reset password",
+      );
+    }
+  },
+
+  /**
+   * Change password for authenticated user
+   * @param {string} currentPassword
+   * @param {string} newPassword
+   * @returns {Promise<{message: string}>}
+   */
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      console.log("AuthService: Changing password");
+      const response = await apiClient.post("/auth/change-password/", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      console.log("AuthService: Password changed successfully", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("AuthService: Password change failed", error);
+      throw new Error(
+        error.response?.data?.error || "Failed to change password",
+      );
+    }
+  },
 
   /**
    * Delete account

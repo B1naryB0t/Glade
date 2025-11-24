@@ -11,7 +11,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """User registration serializer"""
 
     password = serializers.CharField(
-        write_only=True, validators=[validate_password])
+        write_only=True, min_length=8, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
 
     class Meta:
