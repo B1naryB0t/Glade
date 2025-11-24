@@ -7,7 +7,6 @@ from federation import views as federation_views
 from federation import mastodon_api
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
     path("api/v1/auth/", include("accounts.urls")),
     path("api/v1/posts/", include("posts.urls")),
     path("api/v1/notifications/", include("notifications.urls")),
@@ -36,6 +35,10 @@ urlpatterns = [
     path("api/v1/", include("oauth_app.urls")),
     path("", include("federation.urls")),
 ]
+
+# Enable admin only in development or if explicitly enabled
+if settings.DEBUG or getattr(settings, 'ADMIN_ENABLED', False):
+    urlpatterns.insert(0, path("admin/", admin.site.urls))
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

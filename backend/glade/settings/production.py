@@ -6,6 +6,9 @@ from .base import *
 
 DEBUG = False
 
+# Disable admin in production (can be enabled via env var if needed)
+ADMIN_ENABLED = config("ADMIN_ENABLED", default=False, cast=bool)
+
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: v.split(","))
 
 # Security settings
@@ -19,6 +22,22 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", cast=lambda v: v.split(","))
+
+# Allow ActivityPub headers for federation
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'signature',  # For HTTP signatures
+    'date',       # For HTTP signatures
+    'digest',     # For HTTP signatures
+]
 
 # Email configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
