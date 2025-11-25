@@ -35,7 +35,7 @@ function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Password change state
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -122,14 +122,7 @@ function SettingsPage() {
       setSaving(true);
       console.log("Saving settings:", settings);
 
-      // Save location if provided
-      if (settings.latitude && settings.longitude) {
-        await apiClient.post("/api/v1/auth/location/update/", {
-          latitude: settings.latitude,
-          longitude: settings.longitude,
-        });
-      }
-
+      // Send all settings to the backend (including location)
       await api.updateUserSettings(settings);
 
       setSuccessMessage("Settings saved successfully!");
@@ -181,7 +174,11 @@ function SettingsPage() {
     setPasswordSuccess("");
 
     // Validation
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
       setPasswordError("All fields are required");
       return;
     }
@@ -204,7 +201,10 @@ function SettingsPage() {
     try {
       setIsChangingPassword(true);
 
-      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
+      await api.changePassword(
+        passwordData.currentPassword,
+        passwordData.newPassword,
+      );
 
       setPasswordSuccess("Password changed successfully!");
       setPasswordData({
@@ -219,13 +219,13 @@ function SettingsPage() {
       }, 3000);
     } catch (error) {
       console.error("Failed to change password:", error);
-      setPasswordError(error.message || "Failed to change password. Please try again.");
+      setPasswordError(
+        error.message || "Failed to change password. Please try again.",
+      );
     } finally {
       setIsChangingPassword(false);
     }
   };
-
-
 
   const formatDistance = (meters) => {
     if (meters >= 1000) {
@@ -668,13 +668,13 @@ function SettingsPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Change Password
               </h3>
-              
+
               {passwordError && (
                 <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
                   <p className="text-sm text-red-700">{passwordError}</p>
                 </div>
               )}
-              
+
               {passwordSuccess && (
                 <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
                   <p className="text-sm text-green-700">{passwordSuccess}</p>
@@ -690,7 +690,10 @@ function SettingsPage() {
                     type="password"
                     value={passwordData.currentPassword}
                     onChange={(e) =>
-                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                      setPasswordData({
+                        ...passwordData,
+                        currentPassword: e.target.value,
+                      })
                     }
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
                     placeholder="Enter current password"
@@ -705,7 +708,10 @@ function SettingsPage() {
                     type="password"
                     value={passwordData.newPassword}
                     onChange={(e) =>
-                      setPasswordData({ ...passwordData, newPassword: e.target.value })
+                      setPasswordData({
+                        ...passwordData,
+                        newPassword: e.target.value,
+                      })
                     }
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
                     placeholder="Enter new password"
@@ -723,7 +729,10 @@ function SettingsPage() {
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={(e) =>
-                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                      setPasswordData({
+                        ...passwordData,
+                        confirmPassword: e.target.value,
+                      })
                     }
                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
                     placeholder="Confirm new password"
@@ -735,7 +744,9 @@ function SettingsPage() {
                   disabled={isChangingPassword}
                   className="w-full px-4 py-2 bg-[#7A3644] text-white rounded-md hover:bg-[#5f2a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A3644] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isChangingPassword ? "Changing Password..." : "Change Password"}
+                  {isChangingPassword
+                    ? "Changing Password..."
+                    : "Change Password"}
                 </button>
               </form>
             </div>

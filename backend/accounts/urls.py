@@ -42,7 +42,4 @@ urlpatterns = [
     path("timezones/", views.timezone_list, name="timezone-list"),
     path("location/ip/", views.get_ip_location, name="get-ip-location"),
     path("delete-account/", views.delete_account, name="delete-account"),
-    path("password-reset/", views.request_password_reset, name="request-password-reset"),
-    path("password-reset/confirm/", views.confirm_password_reset, name="confirm-password-reset"),
-    path("change-password/", views.change_password, name="change-password"),
 ]

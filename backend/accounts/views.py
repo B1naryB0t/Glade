@@ -253,7 +253,8 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
 
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
@@ -273,7 +274,8 @@ class UserSettingsView(generics.RetrieveUpdateAPIView):
         """Update user settings"""
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
 
@@ -367,7 +369,7 @@ def follow_user_by_uri(request):
     """Follow a user by actor URI (for remote users with slashes in URI)"""
     logger.info(f"follow_user_by_uri called by user {request.user.username}")
     logger.info(f"Request data: {request.data}")
-    
+
     actor_uri = request.data.get("actor_uri")
     if not actor_uri:
         logger.warning("No actor_uri provided in request")
@@ -380,15 +382,19 @@ def follow_user_by_uri(request):
     try:
         logger.info(f"Attempting to follow remote user: {actor_uri}")
         ap_service = ActivityPubService()
-        
+
         # Use async_to_sync with force_new_loop to avoid conflicts with Celery
         from asgiref.sync import async_to_sync
-        result = async_to_sync(ap_service.follow_remote_user, force_new_loop=True)(request.user, actor_uri)
-        
+
+        result = async_to_sync(ap_service.follow_remote_user, force_new_loop=True)(
+            request.user, actor_uri
+        )
+
         logger.info(f"Follow successful: {result}")
         return Response(result, status=201)
     except Exception as e:
-        logger.exception(f"Error in follow_user_by_uri for actor_uri={actor_uri}: {e}")
+        logger.exception(
+            f"Error in follow_user_by_uri for actor_uri={actor_uri}: {e}")
         return Response({"error": str(e)}, status=500)
 
 
@@ -425,7 +431,8 @@ def follow_user(request, username):
                 # Create notification (catch errors if Celery/Redis unavailable)
                 try:
                     if auto_accept:
-                        NotificationService.notify_follow(target_user, request.user)
+                        NotificationService.notify_follow(
+                            target_user, request.user)
                     else:
                         NotificationService.notify_follow_request(
                             target_user, request.user
@@ -501,12 +508,14 @@ def search_users(request):
     # Privacy level 2 (Local): searchable by local users only
     # Privacy level 3 (Private): not searchable
     all_users = User.objects.filter(
-        models.Q(username__icontains=query) | models.Q(display_name__icontains=query),
+        models.Q(username__icontains=query) | models.Q(
+            display_name__icontains=query),
         privacy_level__in=[1, 2],  # Public and Local profiles are searchable
     ).exclude(id=request.user.id)
 
     total_count = all_users.count()
-    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+    total_pages = (total_count + page_size -
+                   1) // page_size  # Ceiling division
 
     # Paginate results
     start = (page - 1) * page_size
@@ -560,7 +569,8 @@ def accept_follow_request(request, follow_id):
 
         # Notify the follower that their request was accepted
         try:
-            NotificationService.notify_follow_accepted(follow.follower, request.user)
+            NotificationService.notify_follow_accepted(
+                follow.follower, request.user)
         except Exception as e:
             print(f"Notification failed: {e}")
 
@@ -673,7 +683,8 @@ def get_ip_location(request):
 
     try:
         # Using ip-api.com free tier (no API key needed)
-        response = requests.get(f"http://ip-api.com/json/{ip_address}", timeout=10)
+        response = requests.get(
+            f"http://ip-api.com/json/{ip_address}", timeout=10)
 
         logger.info(f"IP-API response status: {response.status_code}")
 
@@ -752,10 +763,12 @@ def user_settings(request):
             {
                 "username": user.username,
                 "email": user.email,
+                "display_name": user.display_name or "",
                 "email_verified": user.email_verified,
                 "bio": user.bio or "",
                 "latitude": latitude,
                 "longitude": longitude,
+                "location_privacy_radius": user.location_privacy_radius,
                 "profile_visibility": privacy_map.get(user.privacy_level, "public"),
                 "default_post_privacy": "public",  # TODO: Add to user model
                 "email_notifications": True,  # TODO: Get from notification preferences
@@ -766,15 +779,21 @@ def user_settings(request):
     elif request.method == "PUT":
         # Update user settings
         from django.contrib.gis.geos import Point
+        from privacy.services import PrivacyService
 
         data = request.data
+
+        # Map frontend privacy values to backend integers
+        privacy_map_reverse = {"public": 1,
+                               "local": 2, "followers": 3, "private": 4}
 
         if "display_name" in data:
             user.display_name = data["display_name"]
         if "bio" in data:
             user.bio = data["bio"]
-        if "privacy_level" in data:
-            user.privacy_level = data["privacy_level"]
+        if "profile_visibility" in data:
+            user.privacy_level = privacy_map_reverse.get(
+                data["profile_visibility"], 2)
         if "location_privacy_radius" in data:
             user.location_privacy_radius = data["location_privacy_radius"]
 
@@ -783,11 +802,9 @@ def user_settings(request):
             lat = data["latitude"]
             lng = data["longitude"]
             if lat is not None and lng is not None:
-                from privacy.services import PrivacyService
-
                 privacy_service = PrivacyService()
                 fuzzed_lat, fuzzed_lng = privacy_service.apply_location_privacy(
-                    lat, lng, user.privacy_level
+                    float(lat), float(lng), user.privacy_level
                 )
                 user.approximate_location = Point(fuzzed_lng, fuzzed_lat)
             else:
@@ -795,10 +812,29 @@ def user_settings(request):
 
         user.save()
 
+        # Return updated settings
+        privacy_map = {1: "public", 2: "local", 3: "followers", 4: "private"}
+        latitude = None
+        longitude = None
+        if user.approximate_location:
+            longitude = user.approximate_location.x
+            latitude = user.approximate_location.y
+
         return Response(
             {
                 "message": "Settings updated successfully",
-                "user": UserSerializer(user).data,
+                "username": user.username,
+                "email": user.email,
+                "display_name": user.display_name or "",
+                "email_verified": user.email_verified,
+                "bio": user.bio or "",
+                "latitude": latitude,
+                "longitude": longitude,
+                "location_privacy_radius": user.location_privacy_radius,
+                "profile_visibility": privacy_map.get(user.privacy_level, "public"),
+                "default_post_privacy": "public",
+                "email_notifications": True,
+                "browser_notifications": False,
             }
         )
 
@@ -845,7 +881,7 @@ def delete_account(request):
 def request_password_reset(request):
     """Request password reset - sends email with reset token"""
     from django.core.cache import cache
-    
+
     email = request.data.get("email")
 
     if not email:
@@ -864,10 +900,11 @@ def request_password_reset(request):
 
     try:
         user = User.objects.get(email=email)
-        
+
         # Invalidate all previous reset tokens for this user
-        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
-        
+        PasswordResetToken.objects.filter(
+            user=user, used=False).update(used=True)
+
         # Generate reset token
         import secrets
         from datetime import timedelta
@@ -877,8 +914,7 @@ def request_password_reset(request):
 
         # Create token record
         PasswordResetToken.objects.create(
-            user=user, token=token, expires_at=expires_at
-        )
+            user=user, token=token, expires_at=expires_at)
 
         # Send reset email
         try:
@@ -923,7 +959,7 @@ def confirm_password_reset(request):
     ip_address = SessionManagementService.get_client_ip(request)
     cache_key = f"password_reset_confirm_{ip_address}"
     failed_attempts = cache.get(cache_key, 0)
-    
+
     if failed_attempts >= 10:
         return Response(
             {"error": "Too many failed attempts. Please request a new reset link."},
@@ -960,7 +996,9 @@ def confirm_password_reset(request):
             f"Attempt to reuse password reset token for user {reset_token.user.username} from IP {ip_address}"
         )
         return Response(
-            {"error": "This reset link has already been used. Please request a new one."},
+            {
+                "error": "This reset link has already been used. Please request a new one."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -987,17 +1025,18 @@ def confirm_password_reset(request):
 
     # Send notification email about password change
     try:
+        from django.conf import settings
         from django.core.mail import send_mail
         from django.template.loader import render_to_string
         from django.utils.html import strip_tags
-        from django.conf import settings
 
         context = {
             "user": user,
             "ip_address": ip_address,
             "timestamp": timezone.now(),
         }
-        html_message = render_to_string("emails/password_changed.html", context)
+        html_message = render_to_string(
+            "emails/password_changed.html", context)
         plain_message = strip_tags(html_message)
 
         send_mail(
