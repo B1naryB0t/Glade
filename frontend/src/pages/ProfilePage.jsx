@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { userService } from "../services/userService";
+import { postService } from "../services/postService";
 import PostCard from "../components/posts/PostCard";
 import UserTypeBadge, { UserTypeInfo } from "../components/UserTypeBadge";
 
@@ -32,7 +33,7 @@ export default function ProfilePage() {
   // Fetch user posts
   const { data: postsData, isLoading: postsLoading } = useQuery({
     queryKey: ["userPosts", profileUsername],
-    queryFn: () => userService.getUserPosts(profileUsername),
+    queryFn: () => postService.getUserPosts(profileUsername),
     enabled: !!profileUsername,
   });
 
