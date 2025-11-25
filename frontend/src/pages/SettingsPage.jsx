@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
-import { apiClient } from "../services/apiClient";
 import { useAuth } from "../hooks/useAuth";
 import LocationPicker from "../components/LocationPicker";
 
@@ -17,11 +16,9 @@ function SettingsPage() {
     bio: "",
     latitude: null,
     longitude: null,
-    location: { city: "", region: "" },
     profile_visibility: "public",
     default_post_privacy: "public",
-    location_privacy_radius: 1000, // meters
-    location_fuzzing_radius: 100, // meters - the fuzzing offset
+    location_privacy_radius: 1000,
     email_notifications: true,
     browser_notifications: false,
   });
@@ -35,16 +32,6 @@ function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Password change state
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState("");
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Load settings
   useEffect(() => {
@@ -63,11 +50,9 @@ function SettingsPage() {
           bio: userSettings.bio || "",
           latitude: userSettings.latitude || null,
           longitude: userSettings.longitude || null,
-          location: userSettings.location || { city: "", region: "" },
           profile_visibility: userSettings.profile_visibility || "public",
           default_post_privacy: userSettings.default_post_privacy || "public",
           location_privacy_radius: userSettings.location_privacy_radius || 1000,
-          location_fuzzing_radius: userSettings.location_fuzzing_radius || 100,
           email_notifications: userSettings.email_notifications ?? true,
           browser_notifications: userSettings.browser_notifications ?? false,
         });
@@ -86,25 +71,10 @@ function SettingsPage() {
 
   // Handle setting changes
   const handleChange = (field, value) => {
-    setSettings((prevSettings) => {
-      // Handle nested location object
-      if (field.startsWith("location.")) {
-        const locationField = field.split(".")[1];
-        return {
-          ...prevSettings,
-          location: {
-            ...prevSettings.location,
-            [locationField]: value,
-          },
-        };
-      }
-
-      // Handle regular fields
-      return {
-        ...prevSettings,
-        [field]: value,
-      };
-    });
+    setSettings((prevSettings) => ({
+      ...prevSettings,
+      [field]: value,
+    }));
   };
 
   // Handle location change from LocationPicker
@@ -122,15 +92,9 @@ function SettingsPage() {
       setSaving(true);
       console.log("Saving settings:", settings);
 
-      // Save location if provided
-      if (settings.latitude && settings.longitude) {
-        await apiClient.post("/api/v1/auth/location/update/", {
-          latitude: settings.latitude,
-          longitude: settings.longitude,
-        });
-      }
-
-      await api.updateUserSettings(settings);
+      // Send all settings to the backend (including location)
+      const response = await api.updateUserSettings(settings);
+      console.log("Settings saved:", response);
 
       setSuccessMessage("Settings saved successfully!");
       setError("");
@@ -174,66 +138,6 @@ function SettingsPage() {
     }
   };
 
-  // Handle password change
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    setPasswordError("");
-    setPasswordSuccess("");
-
-    // Validation
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setPasswordError("All fields are required");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters long");
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-
-    if (passwordData.currentPassword === passwordData.newPassword) {
-      setPasswordError("New password must be different from current password");
-      return;
-    }
-
-    try {
-      setIsChangingPassword(true);
-
-      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
-
-      setPasswordSuccess("Password changed successfully!");
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        setPasswordSuccess("");
-      }, 3000);
-    } catch (error) {
-      console.error("Failed to change password:", error);
-      setPasswordError(error.message || "Failed to change password. Please try again.");
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-
-
-  const formatDistance = (meters) => {
-    if (meters >= 1000) {
-      return `${(meters / 1000).toFixed(1)} km`;
-    }
-    return `${meters} m`;
-  };
-
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -263,7 +167,7 @@ function SettingsPage() {
                 onClick={() => setActiveTab("profile")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "profile"
-                    ? "border-[#7A3644] text-[#7A3644]"
+                    ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
@@ -273,31 +177,31 @@ function SettingsPage() {
                 onClick={() => setActiveTab("privacy")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "privacy"
-                    ? "border-[#7A3644] text-[#7A3644]"
+                    ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                Privacy & Location
+                Privacy
               </button>
               <button
                 onClick={() => setActiveTab("notifications")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "notifications"
-                    ? "border-[#7A3644] text-[#7A3644]"
+                    ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 Notifications
               </button>
               <button
-                onClick={() => setActiveTab("security")}
+                onClick={() => setActiveTab("danger")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "security"
-                    ? "border-[#7A3644] text-[#7A3644]"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  activeTab === "danger"
+                    ? "border-red-500 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-red-600 hover:border-red-300"
                 }`}
               >
-                Security & Account
+                Danger Zone
               </button>
             </nav>
           </div>
@@ -361,10 +265,13 @@ function SettingsPage() {
                 <input
                   type="text"
                   value={settings.username}
-                  onChange={(e) => handleChange("username", e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  disabled
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed sm:text-sm"
                   placeholder="Your username"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Username cannot be changed
+                </p>
               </div>
 
               <div>
@@ -375,7 +282,7 @@ function SettingsPage() {
                   type="text"
                   value={settings.display_name}
                   onChange={(e) => handleChange("display_name", e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Your display name"
                 />
               </div>
@@ -388,7 +295,7 @@ function SettingsPage() {
                   type="email"
                   value={settings.email}
                   onChange={(e) => handleChange("email", e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Your email"
                 />
               </div>
@@ -401,7 +308,7 @@ function SettingsPage() {
                   value={settings.bio}
                   onChange={(e) => handleChange("bio", e.target.value)}
                   rows={3}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   placeholder="Tell us about yourself"
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -416,6 +323,7 @@ function SettingsPage() {
                   initialLng={settings.longitude}
                   required={false}
                 />
+
                 <div className="mt-2 text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
                   <div className="flex items-start">
                     <svg
@@ -448,8 +356,7 @@ function SettingsPage() {
         {/* Privacy Tab */}
         {activeTab === "privacy" && (
           <div className="p-6 space-y-6">
-            <div className="space-y-6">
-              {/* Profile Visibility */}
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Profile Visibility
@@ -459,9 +366,10 @@ function SettingsPage() {
                   onChange={(e) =>
                     handleChange("profile_visibility", e.target.value)
                   }
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value="public">Public</option>
+                  <option value="local">Local</option>
                   <option value="followers">Followers Only</option>
                   <option value="private">Private</option>
                 </select>
@@ -470,7 +378,30 @@ function SettingsPage() {
                 </p>
               </div>
 
-              {/* Default Post Privacy */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Location Privacy Radius (meters)
+                </label>
+                <input
+                  type="number"
+                  min="100"
+                  max="5000"
+                  step="100"
+                  value={settings.location_privacy_radius}
+                  onChange={(e) =>
+                    handleChange(
+                      "location_privacy_radius",
+                      parseInt(e.target.value),
+                    )
+                  }
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Your location will be fuzzed within this radius for privacy
+                  (100-5000 meters)
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Default Post Privacy
@@ -480,7 +411,7 @@ function SettingsPage() {
                   onChange={(e) =>
                     handleChange("default_post_privacy", e.target.value)
                   }
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 >
                   <option value="public">Public</option>
                   <option value="local">Local</option>
@@ -490,116 +421,6 @@ function SettingsPage() {
                 <p className="mt-1 text-xs text-gray-500">
                   Default privacy setting for your new posts
                 </p>
-              </div>
-
-              {/* Location Fuzzing Radius */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start">
-                  <svg
-                    className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-yellow-800 mb-3">
-                      Location Privacy Settings
-                    </h3>
-
-                    <div className="space-y-4">
-                      {/* Fuzzing Radius */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Location Fuzzing:{" "}
-                          {formatDistance(settings.location_fuzzing_radius)}
-                        </label>
-                        <div className="flex items-center space-x-4">
-                          <input
-                            type="range"
-                            min="50"
-                            max="500"
-                            step="50"
-                            value={settings.location_fuzzing_radius}
-                            onChange={(e) =>
-                              handleChange(
-                                "location_fuzzing_radius",
-                                parseInt(e.target.value),
-                              )
-                            }
-                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7A3644]"
-                          />
-                          <span className="text-sm text-gray-600 w-20 text-right font-medium">
-                            {formatDistance(settings.location_fuzzing_radius)}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-xs text-gray-600">
-                          Your exact location will be randomly offset by up to
-                          this distance. Higher values provide more privacy but
-                          less precise location sharing.
-                        </p>
-                      </div>
-
-                      {/* Privacy Level Indicator */}
-                      <div className="flex items-center justify-between pt-2 border-t border-yellow-200">
-                        <span className="text-xs font-medium text-gray-700">
-                          Privacy Level:
-                        </span>
-                        <span
-                          className={`text-xs font-semibold px-2 py-1 rounded ${
-                            settings.location_fuzzing_radius < 150
-                              ? "bg-orange-100 text-orange-800"
-                              : settings.location_fuzzing_radius < 300
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {settings.location_fuzzing_radius < 150
-                            ? "Low Privacy"
-                            : settings.location_fuzzing_radius < 300
-                              ? "Medium Privacy"
-                              : "High Privacy"}
-                        </span>
-                      </div>
-
-                      {/* Visibility Radius */}
-                      <div className="pt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Local Post Visibility:{" "}
-                          {formatDistance(settings.location_privacy_radius)}
-                        </label>
-                        <div className="flex items-center space-x-4">
-                          <input
-                            type="range"
-                            min="500"
-                            max="10000"
-                            step="500"
-                            value={settings.location_privacy_radius}
-                            onChange={(e) =>
-                              handleChange(
-                                "location_privacy_radius",
-                                parseInt(e.target.value),
-                              )
-                            }
-                            className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7A3644]"
-                          />
-                          <span className="text-sm text-gray-600 w-20 text-right font-medium">
-                            {formatDistance(settings.location_privacy_radius)}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-xs text-gray-600">
-                          How close others need to be to see your "Local" posts.
-                          Larger radius means more people can see your local
-                          posts.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -628,7 +449,7 @@ function SettingsPage() {
                       }
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#7A3644]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#7A3644]"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
               </div>
@@ -652,7 +473,7 @@ function SettingsPage() {
                       }
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#7A3644]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#7A3644]"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
               </div>
@@ -660,87 +481,9 @@ function SettingsPage() {
           </div>
         )}
 
-        {/* Security & Account Tab */}
-        {activeTab === "security" && (
-          <div className="p-6 space-y-6">
-            {/* Change Password Section */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Change Password
-              </h3>
-              
-              {passwordError && (
-                <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-                  <p className="text-sm text-red-700">{passwordError}</p>
-                </div>
-              )}
-              
-              {passwordSuccess && (
-                <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4">
-                  <p className="text-sm text-green-700">{passwordSuccess}</p>
-                </div>
-              )}
-
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.currentPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, currentPassword: e.target.value })
-                    }
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
-                    placeholder="Enter current password"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.newPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, newPassword: e.target.value })
-                    }
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
-                    placeholder="Enter new password"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Must be at least 8 characters long
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordData.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-                    }
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#7A3644] focus:border-[#7A3644] sm:text-sm"
-                    placeholder="Confirm new password"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isChangingPassword}
-                  className="w-full px-4 py-2 bg-[#7A3644] text-white rounded-md hover:bg-[#5f2a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A3644] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isChangingPassword ? "Changing Password..." : "Change Password"}
-                </button>
-              </form>
-            </div>
-
-            {/* Delete Account Section */}
+        {/* Danger Zone Tab */}
+        {activeTab === "danger" && (
+          <div className="p-6">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-red-900 mb-2">
                 Delete Account
@@ -768,14 +511,14 @@ function SettingsPage() {
           <div className="flex space-x-3 ml-auto">
             <button
               onClick={() => navigate(-1)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A3644]"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-[#7A3644] text-white rounded-md hover:bg-[#5f2a35] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7A3644] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
@@ -797,6 +540,7 @@ function SettingsPage() {
             <p className="text-sm text-gray-700 mb-4">
               Please enter your password to confirm:
             </p>
+
             <input
               type="password"
               value={deletePassword}
@@ -804,9 +548,11 @@ function SettingsPage() {
               placeholder="Enter your password"
               className="w-full border border-gray-300 rounded-md px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
+
             {deleteError && (
               <p className="text-sm text-red-600 mb-4">{deleteError}</p>
             )}
+
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => {
@@ -833,5 +579,4 @@ function SettingsPage() {
     </div>
   );
 }
-
 export default SettingsPage;
