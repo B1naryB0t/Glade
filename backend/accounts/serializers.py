@@ -102,6 +102,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     follow_requested = serializers.SerializerMethodField()
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
+    posts_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -120,6 +121,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "follow_requested",
             "followers_count",
             "following_count",
+            "posts_count",
         ]
         read_only_fields = ["id", "username", "created_at"]
 
@@ -152,6 +154,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.following.filter(accepted=True).count()
+
+    def get_posts_count(self, obj):
+        # If viewing own profile, count all posts
+        request = self.context.get('request')
+        if request and request.user == obj:
+            return obj.posts.count()
+        # Otherwise only count public and local posts
+        return obj.posts.filter(visibility__in=[1, 2]).count()
 
     def validate_display_name(self, value):
         """Validate and sanitize display name"""
